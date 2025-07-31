@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom animations for story generation */
+@keyframes draw-pen {
+  0% { top: 0%; left: 100%; transform: rotate(0deg); }
+  20% { top: 40%; left: 60%; transform: rotate(-45deg); }
+  40% { top: 60%; left: 20%; transform: rotate(10deg); }
+  60% { top: 50%; left: 70%; transform: rotate(-25deg); }
+  80% { top: 30%; left: 30%; transform: rotate(20deg); }
+  100% { top: 0%; left: 100%; transform: rotate(0deg); }
+}
+
+.animate-draw-pen { 
+  animation: draw-pen 4s ease-in-out infinite; 
+}
+
+@keyframes draw-star {
+  0%, 20% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.2); }
+}
+
+.animate-draw-star { 
+  animation: draw-star 4s ease-in-out infinite; 
+  animation-delay: 0.2s; 
+}

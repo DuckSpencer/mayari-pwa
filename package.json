@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:api": "next dev --turbopack --port 3001",
     "build": "next build",
     "start": "next start",
+    "start:api": "next start --port 3001",
     "lint": "next lint"
   },
   "dependencies": {
@@ -25,6 +27,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "5.8.3"
   }
 }

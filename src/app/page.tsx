@@ -31,7 +31,7 @@ export default function HomePage() {
 
       {/* Action Buttons */}
       <div className="w-full max-w-sm flex flex-col gap-4 pb-8 safe-area-bottom">
-        <Link href="/create" className="btn-primary">
+        <Link href="/story/setup" className="btn-primary">
           <PlusCircle size={20} />
           New Story
         </Link>
