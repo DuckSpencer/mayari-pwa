@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Phantom UI Styles */
+
+/* Import Poppins Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@300;400;700&display=swap');
+
+/* Custom Component Styles */
+@layer components {
+  /* Primary Button */
+  .btn-primary {
+    @apply w-full h-touch-lg rounded-button-md bg-gradient-to-r from-accent-coral to-accent-rose text-white font-medium text-base shadow-button-primary flex items-center justify-center gap-2 transition-transform hover:scale-105;
+  }
+  
+  /* Secondary Button */
+  .btn-secondary {
+    @apply w-full h-touch-md rounded-button-sm bg-secondary-cream text-primary-navy border-2 border-primary-blue font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
+  }
+  
+  /* Magic Button */
+  .btn-magic {
+    @apply w-full h-touch-xl rounded-button-lg bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-medium text-base shadow-button-magic flex items-center justify-center gap-2 transition-transform hover:scale-105;
+  }
+  
+  /* Story Card */
+  .story-card {
+    @apply bg-secondary-cream rounded-2xl p-6 border-2 border-transparent hover:border-primary-blue transition-all duration-300 cursor-pointer;
+  }
+  
+  /* Input Field */
+  .input-field {
+    @apply w-full px-4 py-4 rounded-2xl bg-white border-2 border-primary-blue/30 focus:border-primary-blue focus:ring-0 outline-none placeholder:text-neutral text-primary-navy;
+  }
+  
+  /* Progress Dots */
+  .progress-dot {
+    @apply w-2 h-2 rounded-full transition-all;
+  }
+  
+  .progress-dot.active {
+    @apply bg-accent-gold;
+  }
+  
+  .progress-dot.inactive {
+    @apply bg-white/50;
+  }
+}
+
+/* Global Styles */
+html {
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  @apply bg-primary-warm text-primary-navy;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Story Text Styles */
+.story-text {
+  font-family: 'Georgia', serif;
+  @apply text-story-reading text-white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Magical Elements */
+.magical-background {
+  background: radial-gradient(circle at 30% 40%, rgba(212, 197, 240, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 180, 161, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(168, 230, 207, 0.3) 0%, transparent 50%);
+}
+
+/* Animation Utilities */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Touch-friendly interactions */
+.touch-target {
+  @apply min-w-touch-sm min-h-touch-sm;
+}
+
+/* Safe area handling for mobile */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
