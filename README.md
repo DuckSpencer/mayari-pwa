@@ -1,168 +1,320 @@
-# Mayari - AI-Powered Children's Storybook Generator
+# 🌙 Mayari - AI-Powered Children's Storybook Generator
 
-Mayari is a Progressive Web App (PWA) that creates personalized children's stories using artificial intelligence. Parents can generate educational explanations or fantasy stories tailored for children aged 2-5 years.
+**Transform screen time into magical storytelling time.**
 
-## 🌟 Features
+Mayari is a Progressive Web App (PWA) that creates personalized children's stories using artificial intelligence. Parents can generate educational explanations or fantasy stories tailored for children aged 2-5 years, turning daily questions into magical bedtime adventures.
 
-- **Story Creation**: Generate personalized stories using AI (Claude Sonnet 4)
-- **Visual Styles**: Choose from 4 different illustration styles
-- **Story Types**: Educational explanations or fantasy stories
-- **Immersive Reading**: Swipe-based navigation with embedded text
-- **PWA**: Works offline with app-like experience
-- **User Accounts**: Save and share stories
-- **PDF Export**: Export stories for printing
+## 🎯 Project Vision
 
-## 🛠 Tech Stack
+Mayari addresses two core challenges parents face:
+- **"Erklärungsnot"** - Providing immediate, child-friendly answers to complex questions
+- **"Content-Hunger"** - Offering endless creative, personalized stories for daily reading routines
 
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Custom components based on Phantom UI design system
-- **PWA**: next-pwa
-- **Backend**: Supabase (Auth, Database, Storage)
-- **AI Services**: 
-  - Text: OpenRouter (Claude Sonnet 4)
-  - Images: GPT-4 Vision / FLUX.1
-- **Deployment**: Vercel + Hetzner Docker
+The app creates an immersive, distraction-free reading experience that feels like a digital storybook rather than a complex application.
+
+## 🌟 Current Features (Phase 1 Complete ✅)
+
+### ✅ Implemented & Working
+- **🎨 Phantom UI Design System**: Complete color palette, typography, and component library
+- **🔐 User Authentication**: Supabase-powered login/registration with RLS policies
+- **📱 Responsive Landing Page**: Magical animations with floating elements and warm design
+- **🗄️ Database Schema**: Stories table with proper indexing and security
+- **⚡ Next.js 14 Foundation**: App Router, TypeScript, Tailwind CSS
+- **🛡️ Security**: Row Level Security (RLS) policies for data protection
+- **📱 PWA Ready**: Service worker configuration and manifest setup
+
+### 🚧 In Development (Phase 2)
+- **🤖 AI Story Generation**: OpenRouter + Claude Sonnet 4 integration
+- **🎨 AI Image Creation**: OpenAI/FLUX.1 for story illustrations
+- **📖 Story Creation Flow**: 2-page horizontal swipe navigation
+- **📚 Reading Experience**: Immersive full-screen story viewer
+- **💾 Story Management**: Save, share, and export functionality
+
+## 🛠 Tech Stack & Architecture
+
+### Frontend
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS with custom Phantom UI theme
+- **State Management**: React Context + Supabase real-time
+- **Icons**: Lucide React
+- **PWA**: Service worker for offline functionality
+
+### Backend & Database
+- **Database**: Supabase PostgreSQL (v17.4)
+- **Authentication**: Supabase Auth with email/password
+- **Storage**: Supabase Storage for story images
+- **API**: Next.js API Routes with TypeScript
+- **Security**: Row Level Security (RLS) policies
+
+### AI Services
+- **Text Generation**: OpenRouter API (Claude Sonnet 4)
+- **Image Generation**: OpenAI DALL-E / FLUX.1
+- **Prompt Engineering**: Structured prompts for child-appropriate content
+
+### Development & Deployment
+- **Package Manager**: npm 10.x
+- **Node.js**: v20.19.2 (LTS)
+- **Linting**: ESLint with Next.js config
+- **Deployment**: Vercel (planned) + Hetzner Docker
+- **Version Control**: Git with conventional commits
 
 ## 📁 Project Structure
 
 ```
 mayari-pwa/
-├── docs/                   # Project documentation
-│   ├── technical/         # Technical specifications (PRD, SDD)
-│   ├── design/           # Design system and UI components
-│   ├── UI-Screens/       # Screenshot collection
-│   └── assets/           # Design assets
-├── src/                  # Source code
-│   ├── app/             # Next.js App Router
-│   ├── components/      # React components
-│   ├── lib/            # Utility functions
-│   └── types/          # TypeScript definitions
-└── public/             # Static assets
+├── 📚 docs/                    # Comprehensive documentation
+│   ├── technical/             # PRD, SDD, Frontend Spec
+│   ├── design/               # Style Guide, UI Components
+│   ├── UI-Screens/           # Visual mockups (13 screens)
+│   └── assets/               # Design assets
+├── 🎯 src/                   # Source code
+│   ├── app/                 # Next.js App Router pages
+│   │   ├── api/            # API routes (stories, auth)
+│   │   ├── auth/           # Login/register pages
+│   │   └── globals.css     # Global styles
+│   ├── components/         # React components
+│   │   └── auth/          # Authentication components
+│   ├── lib/               # Utility functions
+│   │   └── supabase.ts    # Supabase client config
+│   ├── styles/            # Custom CSS (Phantom UI)
+│   └── types/             # TypeScript definitions
+├── 🗄️ .env.local          # Environment variables
+├── ⚙️ next.config.ts       # Next.js configuration
+├── 🎨 tailwind.config.ts   # Tailwind + Phantom UI theme
+└── 📱 public/             # Static assets
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+- **Node.js**: 20.x or later
+- **npm**: 10.x or later  
+- **Git**: Latest version
+- **Supabase Account**: For database and authentication
+- **OpenRouter Account**: For Claude Sonnet 4 access
+- **OpenAI Account**: For image generation
 
-- Node.js 20.x or later
-- npm 10.x or later
-- Supabase account
-- OpenRouter account
-
-### Installation
-
+### Quick Start
 ```bash
-# Clone the repository
-git clone <repository-url>
+# 1. Clone repository
+git clone https://github.com/DuckSpencer/mayari-pwa.git
 cd mayari-pwa
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Copy environment variables
+# 3. Set up environment variables
 cp .env.example .env.local
+# Edit .env.local with your API keys
 
-# Start development server
+# 4. Start development server
 npm run dev
+
+# 5. Open in browser
+# http://localhost:3000 (or 3001 if 3000 is busy)
 ```
 
-### Environment Variables
-
-Create a `.env.local` file with:
-
+### Environment Configuration
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+# Supabase Configuration (REQUIRED)
+NEXT_PUBLIC_SUPABASE_URL=https://rohgprasvvelqsbxvnqc.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# OpenRouter (Claude Sonnet 4)
+# AI Services (REQUIRED for Phase 2)
 OPENROUTER_API_KEY=your_openrouter_key
-
-# Image Generation
 OPENAI_API_KEY=your_openai_key
+
+# Development
+NODE_ENV=development
 ```
-
-## 📖 Development
-
-### Branching Strategy
-
-- `main` - Production-ready code
-- `develop` - Integration branch for features
-- `feature/*` - Individual features
-- `hotfix/*` - Production fixes
-
-### Code Standards
-
-- ESLint + Prettier for code formatting
-- TypeScript for type safety
-- Conventional commits for git messages
-- Component-driven development
 
 ## 🎨 Design System
 
-Based on Phantom UI with warm, magical theming:
+### Phantom UI Color Palette
+- **Primary Warm**: `#FFF8F0` (Main background)
+- **Primary Soft Blue**: `#7B9AE0` (Interactive elements)
+- **Primary Deep Navy**: `#2C3E50` (Text and headers)
+- **Secondary Peach**: `#FFB4A1` (Warm accents)
+- **Secondary Lavender**: `#D4C5F0` (Gentle backgrounds)
+- **Accent Gold**: `#F4D03F` (Magical elements)
+- **Accent Coral**: `#FF8A65` (Primary CTAs)
 
-- **Primary Colors**: Soft Blue (#7B9AE0), Deep Navy (#2C3E50), Warm Paper (#FFF8F0)
-- **Typography**: Poppins (UI), Georgia (Story text)
-- **Components**: Rounded, friendly design optimized for children
+### Typography
+- **UI Font**: Poppins (300, 400, 500, 600, 700)
+- **Story Text**: Georgia (comfortable reading)
+- **Playful Elements**: Comic Neue
 
-## 📱 User Stories
+### Component Library
+- **Buttons**: Primary (52px), Secondary (48px), Magic (56px)
+- **Cards**: Rounded corners with subtle shadows
+- **Inputs**: Large touch targets with focus states
+- **Animations**: Floating elements, smooth transitions
 
-### Epic 1: Core Functionality
-- Story creation flow (2-page horizontal navigation)
-- AI text and image generation
-- Immersive reading experience
-- Local story storage
+## 📱 User Experience
 
-### Epic 2: User Management
-- Authentication (login/registration)
-- Cloud story storage
-- Sharing and PDF export
+### Target Audience
+- **Primary**: Parents with children aged 2-5 years
+- **Secondary**: Grandparents, caregivers, educators
+- **Use Case**: Bedtime stories, educational explanations, creative play
 
-### Epic 3: PWA Features
-- Offline functionality
-- Performance optimization
-- App-like installation
+### User Flow
+1. **Landing**: Magical welcome screen with floating elements
+2. **Authentication**: Simple login/register with Phantom UI
+3. **Story Creation**: 2-page horizontal swipe flow
+4. **AI Generation**: Engaging loading animation
+5. **Reading**: Immersive full-screen experience
+6. **Management**: Save, share, and export stories
 
-## 🧪 Testing
+### Accessibility
+- **WCAG 2.1 AA** compliance target
+- **Touch-friendly**: Minimum 44px touch targets
+- **Color contrast**: 4.5:1 for normal text, 7:1 for story text
+- **Keyboard navigation**: Full support
+- **Screen reader**: Comprehensive ARIA labels
 
+## 🗄️ Database Schema
+
+### Stories Table
+```sql
+CREATE TABLE stories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    prompt TEXT NOT NULL,
+    story_type VARCHAR(20) CHECK (story_type IN ('realistic', 'fantasy')),
+    art_style VARCHAR(20) CHECK (art_style IN ('peppa-pig', 'pixi-book', 'watercolor', 'comic')),
+    page_count INTEGER CHECK (page_count IN (8, 12, 16)),
+    image_urls TEXT[] DEFAULT '{}',
+    text_content TEXT[] DEFAULT '{}',
+    is_public BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### Security Features
+- **Row Level Security (RLS)**: Users can only access their own stories
+- **Public Stories**: Optional sharing with unique URLs
+- **Data Validation**: Type checking and constraint enforcement
+- **Audit Trail**: Created/updated timestamps
+
+## 🧪 Testing Strategy
+
+### Current Status
+- **Unit Tests**: Planned (Jest + React Testing Library)
+- **Integration Tests**: Planned (API route testing)
+- **E2E Tests**: Planned (Playwright for user flows)
+- **Performance**: Lighthouse CI integration planned
+
+### Testing Roadmap
 ```bash
-# Run tests
-npm test
+# Phase 2: Unit Tests
+npm install --save-dev jest @testing-library/react @testing-library/jest-dom
 
-# Run tests in watch mode
-npm run test:watch
+# Phase 3: E2E Tests  
+npm install --save-dev playwright
 
-# Run E2E tests
-npm run test:e2e
+# Phase 4: Performance
+npm install --save-dev lighthouse
 ```
 
 ## 🚀 Deployment
 
 ### Development
 ```bash
-npm run build
-npm start
+# Local development
+npm run dev          # http://localhost:3000
+npm run build        # Production build
+npm start           # Production server
 ```
 
-### Production (Vercel)
-- Automatic deployment on push to `main`
-- Environment variables configured in Vercel dashboard
+### Production (Planned)
+- **Frontend**: Vercel (automatic deployment)
+- **Database**: Supabase Cloud (EU-Central-1)
+- **Storage**: Supabase Storage
+- **CDN**: Vercel Edge Network
+- **Monitoring**: Vercel Analytics + Supabase Logs
 
-## 📄 License
+### Environment Management
+- **Development**: `.env.local`
+- **Staging**: Vercel environment variables
+- **Production**: Vercel environment variables
+- **Secrets**: Supabase dashboard + Vercel secrets
 
-MIT License - see LICENSE file for details.
+## 📈 Development Phases
+
+### ✅ Phase 1: Foundation (COMPLETE)
+- [x] Next.js 14 + TypeScript setup
+- [x] Supabase integration and authentication
+- [x] Phantom UI design system implementation
+- [x] Database schema and security policies
+- [x] Landing page and auth flows
+- [x] GitHub repository and documentation
+
+### 🚧 Phase 2: AI Integration (IN PROGRESS)
+- [ ] OpenRouter + Claude Sonnet 4 integration
+- [ ] OpenAI/FLUX.1 image generation
+- [ ] Story creation API endpoints
+- [ ] Prompt engineering for child-appropriate content
+- [ ] Error handling and retry logic
+
+### 📋 Phase 3: User Experience (PLANNED)
+- [ ] Story creation flow (2-page horizontal navigation)
+- [ ] Immersive reading experience
+- [ ] Progress indicators and animations
+- [ ] Story management (save, share, export)
+- [ ] Offline functionality
+
+### 🎯 Phase 4: Production (PLANNED)
+- [ ] Performance optimization
+- [ ] PWA features (install, offline)
+- [ ] Analytics and monitoring
+- [ ] SEO optimization
+- [ ] User testing and feedback
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+### Development Workflow
+1. **Fork** the repository
+2. **Create** a feature branch (`feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'feat: add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Code Standards
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Next.js recommended config
+- **Prettier**: Consistent code formatting
+- **Conventional Commits**: Standardized commit messages
+- **Component-Driven**: Reusable, testable components
+
+### Branching Strategy
+- `main` - Production-ready code
+- `develop` - Integration branch for features
+- `feature/*` - Individual features
+- `hotfix/*` - Production fixes
+- `release/*` - Release preparation
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Phantom UI**: Design system inspiration
+- **Supabase**: Backend-as-a-Service platform
+- **Next.js**: React framework for production
+- **Tailwind CSS**: Utility-first CSS framework
+- **OpenRouter**: AI model access platform
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/DuckSpencer/mayari-pwa/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/DuckSpencer/mayari-pwa/discussions)
+- **Documentation**: [Project Wiki](https://github.com/DuckSpencer/mayari-pwa/wiki)
 
 ---
 
-*Mayari - Transforming screen time into magical storytelling time.*
+**🌙 Mayari - Where every question becomes a magical story.**
+
+*Built with ❤️ for families who want to transform screen time into valuable storytelling time.*
