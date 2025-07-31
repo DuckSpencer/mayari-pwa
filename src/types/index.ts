@@ -109,7 +109,7 @@ export interface NavigationItem {
 export interface AppError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export type StoryType = 'realistic' | 'fantasy';

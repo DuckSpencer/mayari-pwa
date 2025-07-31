@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "../styles/globals.css";
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 export const metadata: Metadata = {
   title: "Mayari - AI-Powered Children's Stories",
@@ -31,9 +32,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="h-full bg-primary-warm text-primary-navy font-sans">
-        <div className="min-h-full">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="min-h-full">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

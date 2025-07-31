@@ -12,17 +12,19 @@
 @layer components {
   /* Primary Button */
   .btn-primary {
-    @apply w-full h-touch-lg rounded-button-md bg-gradient-to-r from-accent-coral to-accent-rose text-white font-medium text-base shadow-button-primary flex items-center justify-center gap-2 transition-transform hover:scale-105;
+    @apply w-full h-[52px] rounded-[26px] bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
+    box-shadow: 0px 4px 12px rgba(255, 138, 101, 0.3);
   }
   
   /* Secondary Button */
   .btn-secondary {
-    @apply w-full h-touch-md rounded-button-sm bg-secondary-cream text-primary-navy border-2 border-primary-blue font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
+    @apply w-full h-[48px] rounded-[24px] bg-[#F7F1E8] text-[#2C3E50] border-2 border-[#7B9AE0] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
   }
   
   /* Magic Button */
   .btn-magic {
-    @apply w-full h-touch-xl rounded-button-lg bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-medium text-base shadow-button-magic flex items-center justify-center gap-2 transition-transform hover:scale-105;
+    @apply w-full h-[56px] rounded-[28px] bg-gradient-to-r from-[#7B9AE0] to-[#D4C5F0] text-white font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
+    box-shadow: 0px 6px 16px rgba(123, 154, 224, 0.4);
   }
   
   /* Story Card */
