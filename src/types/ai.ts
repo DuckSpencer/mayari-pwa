@@ -113,30 +113,7 @@ export interface ImageGenerationResponse {
   }
 }
 
-// FLUX.1 Image Generation Types
-export interface FluxImageRequest {
-  prompt: string
-  image_prompt?: string | null
-  width?: number
-  height?: number
-  steps?: number | null
-  prompt_upsampling?: boolean
-  seed?: number | null
-  guidance?: number | null
-  safety_tolerance?: number
-  output_format?: 'jpeg' | 'png'
-  webhook_url?: string | null
-  webhook_secret?: string | null
-}
-
-export interface FluxImageResponse {
-  success: boolean
-  images?: string[]
-  error?: string
-  id?: string
-  polling_url?: string
-  status?: string
-}
+// Note: FLUX.1 types removed - using fal.ai only
 
 export interface StoryIllustrationRequest {
   storyTitle: string

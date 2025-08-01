@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { openRouterClient } from '@/lib/ai/openrouter'
-import { fluxClient } from '@/lib/ai/flux'
+import { falClient } from '@/lib/ai/fal'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
 export interface GenerateStoryRequest {
@@ -46,13 +46,13 @@ export async function POST(request: NextRequest) {
     // Generate story using OpenRouter
     const story = await openRouterClient.generateStory(userInput, storyContext)
 
-    // Generate story illustration using FLUX.1 (cost-effective)
+    // Generate story illustration using fal.ai (cost-effective)
     let images: string[] = []
     try {
       const storyTitle = userInput.substring(0, 50) // Use first 50 chars as title
       const storyStyle = storyContext.storyType === 'realistic' ? 'realistic' : 'fantasy'
       
-      const imageResponse = await fluxClient.generateStoryIllustration(
+      const imageResponse = await falClient.generateStoryIllustration(
         storyTitle,
         story,
         storyStyle
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
       
       if (imageResponse.success && imageResponse.images) {
         images = imageResponse.images
-        console.log('Generated FLUX.1 story illustration:', images[0])
+        console.log('Generated fal.ai story illustration:', images[0])
       }
     } catch (error) {
-      console.warn('Could not generate FLUX.1 story illustration:', error)
+      console.warn('Could not generate fal.ai story illustration:', error)
       // Don't fail the request if image generation fails
     }
 

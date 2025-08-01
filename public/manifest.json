@@ -1,0 +1,21 @@
+{
+  "name": "Mayari - AI-Powered Children's Stories",
+  "short_name": "Mayari",
+  "description": "Create magical bedtime stories with your child, one question at a time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#7B9AE0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "entertainment", "family"],
+  "lang": "en",
+  "dir": "ltr"
+} 

@@ -1,26 +1,35 @@
 # Mayari PWA - API Service Dockerfile
 # Handles AI integration and backend services
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and enable corepack for pnpm
 RUN apk add --no-cache \
     curl \
     git \
     python3 \
     make \
     g++
+RUN corepack enable
 
-# Copy package files
-COPY package*.json ./
+# Copy dependency definition files
+# Using pnpm-lock.yaml* to avoid errors if the file doesn't exist on the first build
+COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies (including devDependencies for TypeScript)
-RUN npm ci
+# Install dependencies using pnpm
+# --frozen-lockfile ensures the exact versions from the lockfile are used
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy config files first (important for Tailwind build)
+COPY tailwind.config.ts postcss.config.mjs ./
+
+# Copy public directory (PWA files)
+COPY public/ ./public/
+
+# Copy the rest of the source code
 COPY . .
 
 # Create non-root user
@@ -38,5 +47,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:3001/api/health || exit 1
 
-# Start the API server
-CMD ["npm", "run", "dev:api"] 
+# Start the API server with pnpm
+CMD ["pnpm", "run", "dev:api"]

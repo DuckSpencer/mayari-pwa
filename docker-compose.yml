@@ -1,8 +1,6 @@
 # Mayari PWA - Docker Compose Configuration
 # Development environment for AI integration
 
-version: '3.8'
-
 services:
   # Main API Service
   mayari-api:
@@ -22,7 +20,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./package.json:/app/package.json
-      - ./package-lock.json:/app/package-lock.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
       - /app/node_modules
     networks:
       - mayari-network

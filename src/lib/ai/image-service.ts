@@ -1,6 +1,5 @@
 // src/lib/ai/image-service.ts
 import { falClient, FalImageRequest, FalImageResponse } from './fal';
-import { fluxClient, FluxImageRequest, FluxImageResponse } from './flux';
 
 // Unified image request interface
 export interface ImageRequest {
@@ -98,60 +97,7 @@ class FalProvider implements ImageProvider {
   }
 }
 
-// FLUX.1 Provider implementation
-class FluxProvider implements ImageProvider {
-  async generateImages(request: ImageRequest): Promise<ImageResponse> {
-    try {
-      const fluxRequest: FluxImageRequest = {
-        prompt: request.prompt,
-        width: request.width || 1024,
-        height: request.height || 768,
-        steps: 28, // Standard quality
-        guidance: 3,
-      };
-
-      const result = await fluxClient.generateImages(fluxRequest);
-      
-      return {
-        success: result.success,
-        images: result.images,
-        error: result.error,
-        provider: 'flux',
-        metadata: {
-          id: result.id,
-        },
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: `FLUX.1 error: ${error.message}`,
-        provider: 'flux',
-      };
-    }
-  }
-
-  async isAvailable(): Promise<boolean> {
-    try {
-      // Simple availability check
-      const testRequest: FluxImageRequest = {
-        prompt: 'test',
-        width: 512,
-        height: 512,
-        steps: 4, // Fast test
-      };
-      
-      const result = await fluxClient.generateImages(testRequest);
-      return result.success;
-    } catch (error) {
-      console.log('FLUX.1 availability check failed:', error);
-      return false;
-    }
-  }
-
-  getName(): string {
-    return 'FLUX.1 (BFL)';
-  }
-}
+// Note: FLUX.1 provider removed - using fal.ai only
 
 // Multi-Provider Image Service
 export class ImageService {

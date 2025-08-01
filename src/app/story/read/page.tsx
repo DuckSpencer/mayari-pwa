@@ -32,8 +32,18 @@ export default function StoryReadPage() {
     if (currentPage < storyPages.length - 1) {
       setCurrentPage(prev => prev + 1)
     } else {
-      // End of story - navigate to end screen
-      router.push('/story/end')
+      // End of story - navigate to end screen with story data
+      const params = new URLSearchParams({
+        story: story,
+        images: JSON.stringify(images),
+        config: JSON.stringify({
+          input: searchParams.get('input') || '',
+          mode: searchParams.get('mode') || 'fantasy',
+          style: searchParams.get('style') || 'style1',
+          length: searchParams.get('length') || 'medium'
+        })
+      })
+      router.push(`/story/end?${params.toString()}`)
     }
   }
 
