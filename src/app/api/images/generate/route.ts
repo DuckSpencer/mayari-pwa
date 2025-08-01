@@ -1,11 +1,11 @@
 // src/app/api/images/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { openAIClient } from '@/lib/ai/openai';
+import { imageService, ImageRequest } from '@/lib/ai/image-service';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, n = 1, size = '1024x1024', model = 'dall-e-3', quality = 'standard', style = 'vivid' } = body;
+    const { prompt, width, height, style, numImages } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -14,34 +14,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Generating images with prompt:', prompt);
-
-    const response = await openAIClient.generateImages({
+    const imageRequest: ImageRequest = {
       prompt,
-      n,
-      size,
-      model,
-      quality,
-      style,
-    });
+      width,
+      height,
+      style: style || 'fantasy',
+      numImages: numImages || 1,
+    };
 
-    if (!response.success) {
+    console.log('API: Generating images with multi-provider service');
+    const result = await imageService.generateImages(imageRequest);
+
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        images: result.images,
+        provider: result.provider,
+        metadata: result.metadata,
+      });
+    } else {
       return NextResponse.json(
-        { success: false, error: response.error },
+        { success: false, error: result.error },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      images: response.images,
-      usage: response.usage,
-    });
-
   } catch (error: any) {
-    console.error('Image generation error:', error);
+    console.error('API Error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to generate images' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
