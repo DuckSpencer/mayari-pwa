@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { openRouterClient } from '@/lib/ai/openrouter'
+import { fluxClient } from '@/lib/ai/flux'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
 export interface GenerateStoryRequest {
@@ -19,6 +20,7 @@ export interface GenerateStoryRequest {
 export interface GenerateStoryResponse {
   success: boolean
   story?: string
+  images?: string[]
   error?: string
   usage?: {
     prompt_tokens: number
@@ -43,6 +45,27 @@ export async function POST(request: NextRequest) {
 
     // Generate story using OpenRouter
     const story = await openRouterClient.generateStory(userInput, storyContext)
+
+    // Generate story illustration using FLUX.1 (cost-effective)
+    let images: string[] = []
+    try {
+      const storyTitle = userInput.substring(0, 50) // Use first 50 chars as title
+      const storyStyle = storyContext.storyType === 'realistic' ? 'realistic' : 'fantasy'
+      
+      const imageResponse = await fluxClient.generateStoryIllustration(
+        storyTitle,
+        story,
+        storyStyle
+      )
+      
+      if (imageResponse.success && imageResponse.images) {
+        images = imageResponse.images
+        console.log('Generated FLUX.1 story illustration:', images[0])
+      }
+    } catch (error) {
+      console.warn('Could not generate FLUX.1 story illustration:', error)
+      // Don't fail the request if image generation fails
+    }
 
     // Get usage statistics if available
     let usage = undefined
@@ -81,6 +104,7 @@ export async function POST(request: NextRequest) {
     const response: GenerateStoryResponse = {
       success: true,
       story,
+      images,
       usage,
     }
 

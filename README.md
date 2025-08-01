@@ -22,10 +22,10 @@ The app creates an immersive, distraction-free reading experience that feels lik
 - **⚡ Next.js 14 Foundation**: App Router, TypeScript, Tailwind CSS
 - **🛡️ Security**: Row Level Security (RLS) policies for data protection
 - **📱 PWA Ready**: Service worker configuration and manifest setup
+- **🤖 AI Image Generation**: FLUX.1 integration with Docker-compatible Axios implementation
 
 ### 🚧 In Development (Phase 2)
 - **🤖 AI Story Generation**: OpenRouter + Claude Sonnet 4 integration
-- **🎨 AI Image Creation**: OpenAI/FLUX.1 for story illustrations
 - **📖 Story Creation Flow**: 2-page horizontal swipe navigation
 - **📚 Reading Experience**: Immersive full-screen story viewer
 - **💾 Story Management**: Save, share, and export functionality
@@ -49,7 +49,7 @@ The app creates an immersive, distraction-free reading experience that feels lik
 
 ### AI Services
 - **Text Generation**: OpenRouter API (Claude Sonnet 4)
-- **Image Generation**: OpenAI DALL-E / FLUX.1
+- **Image Generation**: FLUX.1 (Primary) + OpenAI DALL-E (Fallback)
 - **Prompt Engineering**: Structured prompts for child-appropriate content
 
 ### Development & Deployment
@@ -58,6 +58,66 @@ The app creates an immersive, distraction-free reading experience that feels lik
 - **Linting**: ESLint with Next.js config
 - **Deployment**: Vercel (planned) + Hetzner Docker
 - **Version Control**: Git with conventional commits
+- **Containerization**: Docker with multi-service architecture
+
+## 🤖 AI Integration - FLUX.1
+
+### FLUX.1 Image Generation (✅ Working)
+
+Mayari uses **FLUX.1** as the primary image generation service for story illustrations. The integration includes:
+
+#### **Features**
+- **Model**: FLUX1.1 [pro] - Fast & reliable standard model
+- **Resolution**: Up to 1024x1024 pixels
+- **Style**: Child-friendly, fantasy art with warm colors
+- **Polling**: Asynchronous image generation with status tracking
+- **Error Handling**: Comprehensive retry logic with exponential backoff
+
+#### **Technical Implementation**
+```typescript
+// src/lib/ai/flux.ts
+export class FluxClient {
+  async generateImages(request: FluxImageRequest): Promise<FluxImageResponse>
+  async generateStoryIllustration(title: string, content: string, style: 'realistic' | 'fantasy')
+  async generateStoryScenes(content: string, style: 'realistic' | 'fantasy', numScenes: number)
+}
+```
+
+#### **Docker Compatibility**
+- **Issue Resolved**: Node.js `fetch()` in Docker containers has known issues with `undici`
+- **Solution**: Switched to **Axios** for better Docker compatibility and error handling
+- **Result**: Reliable image generation in containerized environments
+
+#### **API Endpoints**
+- `POST /api/images/flux-generate` - Generate single image
+- `POST /api/images/flux-story` - Generate story illustration
+- `POST /api/images/flux-scenes` - Generate multiple story scenes
+
+#### **Environment Configuration**
+```env
+# FLUX.1 API Configuration
+FLUX_API_KEY=your_flux_api_key_here
+```
+
+### **Docker Setup**
+```bash
+# Start with Docker Compose
+docker-compose up --build -d
+
+# Check logs
+docker-compose logs mayari-api
+
+# Test image generation
+curl -X POST http://localhost:3001/api/images/flux-generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "A magical cat sitting on a windowsill with moonlight, watercolor painting style, child-friendly, warm colors", "width": 1024, "height": 1024}'
+```
+
+### **Multi-Provider Architecture (Planned)**
+- **Primary**: fal.ai (cost-effective alternative)
+- **Fallback**: FLUX.1 (reliable backup)
+- **Error Handling**: Automatic failover between providers
+- **Configuration**: Environment-based provider selection
 
 ## 📁 Project Structure
 
@@ -70,18 +130,26 @@ mayari-pwa/
 │   └── assets/               # Design assets
 ├── 🎯 src/                   # Source code
 │   ├── app/                 # Next.js App Router pages
-│   │   ├── api/            # API routes (stories, auth)
+│   │   ├── api/            # API routes (stories, auth, images)
+│   │   │   ├── images/     # Image generation endpoints
+│   │   │   └── stories/    # Story generation endpoints
 │   │   ├── auth/           # Login/register pages
 │   │   └── globals.css     # Global styles
 │   ├── components/         # React components
 │   │   └── auth/          # Authentication components
 │   ├── lib/               # Utility functions
-│   │   └── supabase.ts    # Supabase client config
+│   │   ├── supabase.ts    # Supabase client config
+│   │   └── ai/           # AI service clients
+│   │       ├── flux.ts    # FLUX.1 image generation
+│   │       ├── openai.ts  # OpenAI image generation
+│   │       └── openrouter.ts # OpenRouter text generation
 │   ├── styles/            # Custom CSS (Phantom UI)
 │   └── types/             # TypeScript definitions
 ├── 🗄️ .env.local          # Environment variables
 ├── ⚙️ next.config.ts       # Next.js configuration
 ├── 🎨 tailwind.config.ts   # Tailwind + Phantom UI theme
+├── 🐳 docker-compose.yml   # Multi-service Docker setup
+├── 🐳 Dockerfile.api       # API service container
 └── 📱 public/             # Static assets
 ```
 
@@ -91,11 +159,14 @@ mayari-pwa/
 - **Node.js**: 20.x or later
 - **npm**: 10.x or later  
 - **Git**: Latest version
+- **Docker**: For containerized development (optional)
 - **Supabase Account**: For database and authentication
 - **OpenRouter Account**: For Claude Sonnet 4 access
-- **OpenAI Account**: For image generation
+- **FLUX.1 Account**: For image generation
 
 ### Quick Start
+
+#### **Option 1: Local Development**
 ```bash
 # 1. Clone repository
 git clone https://github.com/DuckSpencer/mayari-pwa.git
@@ -115,6 +186,29 @@ npm run dev
 # http://localhost:3000 (or 3001 if 3000 is busy)
 ```
 
+#### **Option 2: Docker Development**
+```bash
+# 1. Clone repository
+git clone https://github.com/DuckSpencer/mayari-pwa.git
+cd mayari-pwa
+
+# 2. Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
+
+# 3. Start with Docker Compose
+docker-compose up --build -d
+
+# 4. Check services
+docker-compose ps
+
+# 5. View logs
+docker-compose logs mayari-api
+
+# 6. Access application
+# http://localhost:3001
+```
+
 ### Environment Configuration
 ```env
 # Supabase Configuration (REQUIRED)
@@ -125,8 +219,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 OPENROUTER_API_KEY=your_openrouter_key
 OPENAI_API_KEY=your_openai_key
 
+# FLUX.1 API Key (Primary image generation - cost-effective)
+FLUX_API_KEY=your_flux_api_key_here
+
 # Development
 NODE_ENV=development
+
+# Docker Configuration
+PORT=3001
 ```
 
 ## 🎨 Design System
@@ -224,8 +324,24 @@ npm install --save-dev lighthouse
 ```bash
 # Local development
 npm run dev          # http://localhost:3000
+npm run dev:api      # http://localhost:3001 (API service)
 npm run build        # Production build
 npm start           # Production server
+```
+
+### Docker Development
+```bash
+# Start all services
+docker-compose up --build -d
+
+# View logs
+docker-compose logs mayari-api
+
+# Stop services
+docker-compose down
+
+# Rebuild and restart
+docker-compose up --build -d
 ```
 
 ### Production (Planned)
@@ -250,13 +366,16 @@ npm start           # Production server
 - [x] Database schema and security policies
 - [x] Landing page and auth flows
 - [x] GitHub repository and documentation
+- [x] Docker containerization with multi-service architecture
 
-### 🚧 Phase 2: AI Integration (IN PROGRESS)
+### ✅ Phase 2: AI Integration (PARTIALLY COMPLETE)
+- [x] FLUX.1 image generation with Docker-compatible Axios
+- [x] Image generation API endpoints
+- [x] Error handling and retry logic with exponential backoff
+- [x] Docker/fetch() issue resolution
 - [ ] OpenRouter + Claude Sonnet 4 integration
-- [ ] OpenAI/FLUX.1 image generation
 - [ ] Story creation API endpoints
 - [ ] Prompt engineering for child-appropriate content
-- [ ] Error handling and retry logic
 
 ### 📋 Phase 3: User Experience (PLANNED)
 - [ ] Story creation flow (2-page horizontal navigation)
@@ -306,6 +425,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Next.js**: React framework for production
 - **Tailwind CSS**: Utility-first CSS framework
 - **OpenRouter**: AI model access platform
+- **FLUX.1**: Cost-effective image generation
+- **Axios**: Reliable HTTP client for Docker environments
 
 ## 📞 Support
 

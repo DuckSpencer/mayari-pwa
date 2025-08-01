@@ -83,8 +83,16 @@ export default function StoryGeneratePage() {
       const data = await response.json()
       
       if (data.success && data.story) {
-        // Navigate to reading view with story data
-        router.push(`/story/read?story=${encodeURIComponent(data.story)}`)
+        // Navigate to reading view with story data and images
+        const params = new URLSearchParams({
+          story: data.story,
+        })
+        
+        if (data.images && data.images.length > 0) {
+          params.append('images', JSON.stringify(data.images))
+        }
+        
+        router.push(`/story/read?${params.toString()}`)
       } else {
         throw new Error(data.error || 'Failed to generate story')
       }

@@ -12,12 +12,16 @@ export default function StoryReadPage() {
   const searchParams = useSearchParams()
   
   const [story, setStory] = useState('')
+  const [images, setImages] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(0)
   const [storyPages, setStoryPages] = useState<string[]>([])
 
   useEffect(() => {
     const storyText = searchParams.get('story') || ''
+    const storyImages = searchParams.get('images') ? JSON.parse(searchParams.get('images')!) : []
+    
     setStory(storyText)
+    setImages(storyImages)
     
     // Split story into pages (simplified - in real app you'd have proper pagination)
     const pages = storyText.split('\n\n').filter(page => page.trim().length > 0)
@@ -79,8 +83,15 @@ export default function StoryReadPage() {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-gray-400 text-white font-sans relative overflow-hidden">
-      {/* Background Image - Placeholder for now */}
-      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#7B9AE0] to-[#D4C5F0] opacity-90"></div>
+      {/* Background Image - Generated or fallback */}
+      {images.length > 0 ? (
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center opacity-90"
+          style={{ backgroundImage: `url(${images[0]})` }}
+        ></div>
+      ) : (
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#7B9AE0] to-[#D4C5F0] opacity-90"></div>
+      )}
       
       {/* Navigation Header */}
       <div className="absolute top-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm z-10 flex justify-between items-center">

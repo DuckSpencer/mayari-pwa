@@ -20,6 +20,7 @@ export interface StoryGenerationRequest {
 export interface StoryGenerationResponse {
   success: boolean
   story?: string
+  images?: string[]
   error?: string
   usage?: {
     prompt_tokens: number
@@ -89,4 +90,67 @@ export interface AIProvider {
   maxTokens: number
   temperature: number
   isActive: boolean
+}
+
+// Image Generation Types
+export interface ImageGenerationRequest {
+  prompt: string
+  n?: number
+  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'
+  model?: 'dall-e-2' | 'dall-e-3'
+  quality?: 'standard' | 'hd'
+  style?: 'vivid' | 'natural'
+}
+
+export interface ImageGenerationResponse {
+  success: boolean
+  images?: string[]
+  error?: string
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+}
+
+// FLUX.1 Image Generation Types
+export interface FluxImageRequest {
+  prompt: string
+  image_prompt?: string | null
+  width?: number
+  height?: number
+  steps?: number | null
+  prompt_upsampling?: boolean
+  seed?: number | null
+  guidance?: number | null
+  safety_tolerance?: number
+  output_format?: 'jpeg' | 'png'
+  webhook_url?: string | null
+  webhook_secret?: string | null
+}
+
+export interface FluxImageResponse {
+  success: boolean
+  images?: string[]
+  error?: string
+  id?: string
+  polling_url?: string
+  status?: string
+}
+
+export interface StoryIllustrationRequest {
+  storyTitle: string
+  storyContent: string
+  style?: 'realistic' | 'fantasy'
+}
+
+export interface StoryIllustrationResponse {
+  success: boolean
+  images?: string[]
+  error?: string
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
 } 
