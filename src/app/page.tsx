@@ -1,4 +1,5 @@
-import { PlusCircle, Library, Sparkles, Moon, User } from "lucide-react";
+import { PlusCircle, Library, Sparkles, Moon } from "lucide-react";
+import { UserButton } from '@/components/auth/UserButton';
 import Link from "next/link";
 
 export default function HomePage() {
@@ -7,9 +8,7 @@ export default function HomePage() {
       {/* Header */}
       <div className="w-full flex justify-between items-center pt-4">
         <h1 className="font-['Poppins'] text-3xl font-bold text-primary-navy">Mayari</h1>
-        <button className="p-2 rounded-full bg-secondary-cream border-2 border-primary-blue/30 hover:border-primary-blue transition-all">
-          <User className="text-primary-navy" size={20} />
-        </button>
+        <UserButton />
       </div>
 
       {/* Main Content */}

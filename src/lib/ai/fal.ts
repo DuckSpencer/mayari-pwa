@@ -5,11 +5,12 @@ import { fal } from '@fal-ai/client';
 export interface FalImageRequest {
   prompt: string;
   num_inference_steps?: number;
-  image_size?: 'landscape_4_3' | 'portrait_3_4' | 'square_1_1' | 'landscape_16_9' | 'portrait_9_16';
+  image_size?: 'landscape_4_3' | 'portrait_3_4' | 'square_1_1' | 'landscape_16_9' | 'portrait_9_16' | 'square_hd';
   seed?: number;
   guidance_scale?: number;
   sync_mode?: boolean;
   num_images?: number;
+  // keep optional but not sent to payload unless supported by model
   enable_safety_checker?: boolean;
   output_format?: 'jpeg' | 'png';
   acceleration?: 'none' | 'regular' | 'high';
@@ -35,7 +36,7 @@ export interface FalError {
 // fal.ai Client for Image Generation
 export class FalClient {
   private apiKey: string;
-  private modelId: string = 'fal-ai/flux-1/schnell';
+  private modelId: string = 'fal-ai/flux/schnell';
 
   constructor() {
     const apiKey = process.env.FAL_KEY;
@@ -57,26 +58,19 @@ export class FalClient {
     try {
       console.log('Generating fal.ai image with payload:', {
         prompt: request.prompt,
-        num_inference_steps: request.num_inference_steps || 4,
-        image_size: request.image_size || 'landscape_4_3',
-        guidance_scale: request.guidance_scale || 3.5,
-        num_images: request.num_images || 1,
-        sync_mode: request.sync_mode || false,
+        image_size: request.image_size ?? 'square_hd',
       });
 
-      // Prepare the request payload
-      const payload = {
+      // Normalize and prepare the request payload (avoid invalid/null fields)
+      const payload: any = {
         prompt: request.prompt,
-        num_inference_steps: request.num_inference_steps || 4,
-        image_size: request.image_size || 'landscape_4_3',
-        seed: request.seed || null,
-        guidance_scale: request.guidance_scale || 3.5,
-        sync_mode: request.sync_mode || false,
-        num_images: request.num_images || 1,
-        enable_safety_checker: request.enable_safety_checker !== false, // Default true
-        output_format: request.output_format || 'jpeg',
-        acceleration: request.acceleration || 'regular',
+        image_size: request.image_size ?? 'square_hd',
+        num_inference_steps: request.num_inference_steps ?? 4,
+        num_images: request.num_images ?? 1,
+        enable_safety_checker: request.enable_safety_checker !== false,
+        output_format: request.output_format ?? 'jpeg',
       };
+      if (typeof request.seed === 'number') payload.seed = request.seed
 
       // Use fal.ai client with proper error handling
       const result = await this.makeRequestWithRetry(payload);
@@ -90,6 +84,11 @@ export class FalClient {
       };
 
     } catch (error: any) {
+      try {
+        if (error?.body) {
+          console.error('fal.ai error body:', JSON.stringify(error.body));
+        }
+      } catch {}
       console.error('fal.ai Image Generation Error:', error);
       return {
         success: false,

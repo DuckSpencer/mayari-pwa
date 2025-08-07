@@ -10,7 +10,7 @@ sequenceDiagram
     participant PWA as "Mayari PWA (Next.js)"
     participant Backend as "Next.js API Routes"
     participant TextAI as "Anthropic Claude"
-    participant ImageAI as "gpt-image-1/FLUX.1"
+    participant ImageAI as "fal.ai (FLUX.1 schnell)"
     participant Supabase
 
     User->>PWA: Füllt Story-Formular aus & klickt 'Erstellen'
@@ -61,7 +61,8 @@ sequenceDiagram
 | `story_type` | `varchar` | Typ der Geschichte, z.B. 'Erklärung' oder 'Fantasie'. |
 | `art_style` | `varchar` | Der gewählte visuelle Stil, z.B. 'Peppa Pig Style'.|
 | `page_count`| `integer` | Anzahl der Seiten (z.B. 8, 12, 16). |
-| `image_urls`| `text[]` | Ein geordnetes Array von Texten, das die URLs zu den Bildern enthält. |
+| `image_urls`| `text[]` | Geordnetes Array der Seiten-Bild-URLs. |
+| `text_content`| `text[]` | Geordnetes Array der Seiten-Texte (Overlay). |
 | `is_public` | `boolean` | `true`, wenn die Geschichte öffentlich geteilt werden kann. Standard: `false`.|
 | `created_at`| `timestamp`| Zeitstempel der Erstellung. |
 
@@ -93,11 +94,11 @@ erDiagram
 ### 3. API-Endpunkt-Spezifikation
 
 #### Endpunkt 3.1: Eine neue Geschichte erstellen
-* **Route:** `POST /api/story`
-* **Beschreibung:** Nimmt die Nutzereingaben entgegen, orchestriert KI-Anrufe und speichert die Geschichte.
+* **Route:** `POST /api/stories/generate`
+* **Beschreibung:** Nimmt die Nutzereingaben entgegen, erzeugt strukturierte Seiten (Text) und generiert für jede Seite ein Bild; speichert konsistente Arrays (`text_content[]`, `image_urls[]`).
 * **Authentifizierung:** Erforderlich.
-* **Request Body:** JSON-Objekt mit `prompt`, `story_type`, `art_style`, `length`.
-* **Success Response (`201 Created`):** Gibt das neu erstellte Story-Objekt zurück.
+* **Request Body:** JSON-Objekt mit `userInput`, `storyContext: { storyType, artStyle, pageCount }`.
+* **Success Response (`201 Created`):** `{ success, title, text_content: string[], image_urls: string[] }`.
 * **Error Responses:** `400` (Ungültige Eingabe), `401` (Nicht autorisiert), `500` (Serverfehler).
 
 #### Endpunkt 3.2: Geschichten eines Nutzers abrufen

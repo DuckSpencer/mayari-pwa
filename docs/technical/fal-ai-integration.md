@@ -7,7 +7,7 @@ This document describes the successful integration of fal.ai as the primary imag
 ## 🎯 **Integration Summary**
 
 ### **Provider**: fal.ai FLUX.1 [schnell]
-- **Model**: `fal-ai/flux-1/schnell`
+- **Model**: `fal-ai/flux/schnell`
 - **Type**: Text-to-Image Generation
 - **Status**: ✅ **FULLY FUNCTIONAL**
 
@@ -49,12 +49,10 @@ const falRequest: FalImageRequest = {
   prompt: request.prompt,
   image_size: 'square_hd', // Official documented size
   num_inference_steps: 4, // Fast generation
-  guidance_scale: 3.5,
-  sync_mode: false, // Async mode as per official docs
   num_images: 1,
   enable_safety_checker: true,
   output_format: 'jpeg',
-  acceleration: 'regular',
+  // Note: guidance_scale and sync_mode are not sent for 'fal-ai/flux/schnell' to avoid 422 errors.
 };
 ```
 
@@ -93,7 +91,7 @@ curl -X POST http://localhost:3001/api/images/generate \
 - **Issue**: Invalid request parameters
 - **Root Cause**: Using wrong model ID and parameters
 - **Solution**: 
-  - Changed model from `fal-ai/flux/dev` to `fal-ai/flux-1/schnell`
+  - Changed model from `fal-ai/flux/dev` to `fal-ai/flux/schnell`
   - Updated parameters to match official documentation
 
 ### **Problem 3: Docker/Node.js 18+ Compatibility**

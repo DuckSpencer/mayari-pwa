@@ -1,4 +1,10 @@
 # Mayari Style Guide
+
+> Canonical Note: This is the canonical style guide for Mayari. Previous explorations are preserved as historical references:
+> - Historical: `docs/archive/style-guide-duolingo-ui_based.md`
+> - Historical: `docs/archive/style-guide-wise-ui_based.md`
+>
+> All design tokens and UI work should reference this document as the single source of truth.
 *A Digital Storybook Experience for Families*
 
 ## Color Palette

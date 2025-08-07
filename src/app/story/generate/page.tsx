@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Star, PenTool } from 'lucide-react'
 
@@ -29,7 +29,12 @@ export default function StoryGeneratePage() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  const startedRef = useRef(false)
+  const requestIdRef = useRef<string | null>(null)
+
   useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
     const input = searchParams.get('input') || ''
     const mode = (searchParams.get('mode') as 'realistic' | 'fantasy') || 'fantasy'
     const style = searchParams.get('style') || 'style1'
@@ -45,6 +50,8 @@ export default function StoryGeneratePage() {
     try {
       setIsGenerating(true)
       setError(null)
+      const myRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      requestIdRef.current = myRequestId
       
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -81,11 +88,17 @@ export default function StoryGeneratePage() {
       }
 
       const data = await response.json()
+      // Ignore stale responses if a newer request started
+      if (requestIdRef.current !== myRequestId) return
       
       if (data.success && data.story) {
         // Navigate to reading view with story data and images
         const params = new URLSearchParams({
           story: data.story,
+          input: config.input,
+          mode: config.mode,
+          style: config.style,
+          length: config.length,
         })
         
         if (data.images && data.images.length > 0) {

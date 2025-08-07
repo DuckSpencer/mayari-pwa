@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { openRouterClient } from '@/lib/ai/openrouter'
 import { falClient } from '@/lib/ai/fal'
 import { createServerSupabaseClient } from '@/lib/supabase'
+import type { Database } from '@/types/database'
 
 export interface GenerateStoryRequest {
   userInput: string
@@ -13,7 +14,10 @@ export interface GenerateStoryRequest {
     childAge?: number
     storyType?: string
     theme?: string
+    artStyle?: 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic'
+    pageCount?: 8 | 12 | 16
   }
+  // userId is ignored; we derive user from Supabase session
   userId?: string
 }
 
@@ -33,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body: GenerateStoryRequest = await request.json()
-    const { userInput, storyContext = {}, userId } = body
+    const { userInput, storyContext = {} } = body
 
     // Validate input
     if (!userInput || userInput.trim().length === 0) {
@@ -43,28 +47,79 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate story using OpenRouter
-    const story = await openRouterClient.generateStory(userInput, storyContext)
+    // Determine page count and style
+    const pageCount = (storyContext.pageCount as number) || 8
+    // Accept both artStyle and theme from client and normalize to our union type
+    const requestedStyle = (storyContext.artStyle || (storyContext as any).theme || 'watercolor') as
+      | 'peppa-pig'
+      | 'pixi-book'
+      | 'watercolor'
+      | 'comic'
+    const artStyle = requestedStyle
+    const storyType = storyContext.storyType === 'realistic' ? 'realistic' : 'fantasy'
 
-    // Generate story illustration using fal.ai (cost-effective)
-    let images: string[] = []
-    try {
-      const storyTitle = userInput.substring(0, 50) // Use first 50 chars as title
-      const storyStyle = storyContext.storyType === 'realistic' ? 'realistic' : 'fantasy'
-      
-      const imageResponse = await falClient.generateStoryIllustration(
-        storyTitle,
-        story,
-        storyStyle
-      )
-      
-      if (imageResponse.success && imageResponse.images) {
-        images = imageResponse.images
-        console.log('Generated fal.ai story illustration:', images[0])
+    // Generate paginated story using OpenRouter (structured JSON)
+    const paged = await openRouterClient.generatePagedStory(userInput, pageCount, storyContext)
+    const title = paged.title
+    const text_content = paged.pages.map(p => p.text)
+
+    // Generate one image per page (limited concurrency)
+    const concurrency = 3
+    const image_urls: string[] = new Array(pageCount).fill('')
+    // Derive a deterministic seed from userInput to promote visual consistency
+    const seed = Math.abs(
+      Array.from(userInput).reduce((acc, ch) => ((acc << 5) - acc) + ch.charCodeAt(0), 0)
+    ) || Math.floor(Math.random() * 2147483647)
+
+    const styleDescriptor = (style: typeof artStyle): string => {
+      switch (style) {
+        case 'peppa-pig':
+          return 'simple preschool cartoon style, flat colors, minimal shading, thick outlines, rounded characters, bright pastel palette'
+        case 'pixi-book':
+          return 'European children\'s picture book style, soft watercolor textures, gentle shading, paper grain, warm cozy palette'
+        case 'comic':
+          return 'comic illustration style, clean ink outlines, flat shading, bold shapes, child-friendly composition'
+        case 'watercolor':
+        default:
+          return 'soft watercolor painting, light paper texture, gentle gradients, warm colors, child-friendly'
       }
-    } catch (error) {
-      console.warn('Could not generate fal.ai story illustration:', error)
-      // Don't fail the request if image generation fails
+    }
+
+    const makePrompt = (pageText: string) => {
+      const typeHint = storyType === 'fantasy'
+        ? 'fantasy vibe, magical elements, whimsical, vibrant yet soft, child-friendly'
+        : 'realistic vibe, natural lighting, gentle and child-friendly'
+      const artHint = styleDescriptor(artStyle)
+      const noTextRule = 'no text, no letters, no captions, no watermarks, no signage, no subtitles, no logos'
+      const consistencyRule = 'keep main character design consistent across all pages (hair, clothing, colors, species)'
+      return `Illustration for a children\'s story page: ${pageText}. ${typeHint}. ${artHint}. ${consistencyRule}. ${noTextRule}. High quality, warm colors.`
+    }
+    const tasks = text_content.map((txt, i) => async () => {
+      const prompt = makePrompt(txt)
+      const maxRetries = 2
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const resp = await falClient.generateImages({
+          prompt,
+          image_size: 'square_hd',
+          num_inference_steps: 6,
+          output_format: 'jpeg',
+          enable_safety_checker: true,
+          num_images: 1,
+          seed: seed + i,
+        })
+        if (resp.success && resp.images && resp.images[0]) {
+          image_urls[i] = resp.images[0]
+          return
+        }
+        await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+      }
+      // Fallback placeholder to keep arrays aligned
+      image_urls[i] = '/icon-192x192.png'
+    })
+    // Run with simple concurrency limiter
+    for (let i = 0; i < tasks.length; i += concurrency) {
+      const batch = tasks.slice(i, i + concurrency).map(fn => fn())
+      await Promise.all(batch)
     }
 
     // Get usage statistics if available
@@ -76,36 +131,42 @@ export async function POST(request: NextRequest) {
       console.warn('Could not get usage statistics:', error)
     }
 
-    // Save story to database if user is authenticated
-    if (userId) {
-      try {
-        const supabase = await createServerSupabaseClient()
-        
+    // Save story to database if user is authenticated (cookie/session based)
+    let saved = false
+    try {
+      const supabase = await createServerSupabaseClient()
+      const { data: authData, error: authError } = await supabase.auth.getUser()
+      if (!authError && authData?.user?.id) {
+        const insertPayload: Database['public']['Tables']['stories']['Insert'] = {
+          user_id: authData.user.id,
+          text_content,
+          image_urls,
+          prompt: userInput,
+          story_type: storyType as 'realistic' | 'fantasy',
+          art_style: artStyle as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic',
+          page_count: pageCount as 8 | 12 | 16,
+          created_at: new Date().toISOString(),
+        }
         const { error: dbError } = await supabase
           .from('stories')
-          .insert({
-            user_id: userId,
-            title: userInput.substring(0, 100), // Use first 100 chars as title
-            content: story,
-            story_context: storyContext,
-            created_at: new Date().toISOString(),
-          })
-
-        if (dbError) {
-          console.error('Database error:', dbError)
-          // Don't fail the request if DB save fails
-        }
-      } catch (error) {
-        console.error('Error saving story to database:', error)
-        // Don't fail the request if DB save fails
+          .insert(insertPayload)
+        if (!dbError) saved = true
+        else console.error('Database error:', dbError)
       }
+    } catch (error) {
+      console.error('Error saving story to database:', error)
     }
 
-    const response: GenerateStoryResponse = {
+    const response = {
       success: true,
-      story,
-      images,
+      title,
+      text_content,
+      image_urls,
       usage,
+      saved,
+      // Backward-compat fields
+      story: text_content.join('\n\n'),
+      images: image_urls,
     }
 
     return NextResponse.json(response)

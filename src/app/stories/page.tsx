@@ -62,7 +62,7 @@ export default function StoriesPage() {
 
     // Filter by type
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(story => story.config.mode === selectedFilter)
+      filtered = filtered.filter(story => story.config?.mode === selectedFilter)
     }
 
     setFilteredStories(filtered)
@@ -221,12 +221,12 @@ export default function StoriesPage() {
                     <span className="text-xs font-['Poppins'] text-[#95A5A6]">
                       {formatDate(story.createdAt)}
                     </span>
-                    <span className={`text-xs font-['Poppins'] px-2 py-1 rounded-full ${
-                      story.config.mode === 'fantasy' 
+                     <span className={`text-xs font-['Poppins'] px-2 py-1 rounded-full ${
+                      (story.config?.mode || 'fantasy') === 'fantasy' 
                         ? 'bg-[#BB8FCE]/20 text-[#BB8FCE]' 
                         : 'bg-[#5DADE2]/20 text-[#5DADE2]'
                     }`}>
-                      {story.config.mode === 'fantasy' ? 'Fantasy' : 'Realistic'}
+                      {(story.config?.mode || 'fantasy') === 'fantasy' ? 'Fantasy' : 'Realistic'}
                     </span>
                   </div>
                 </div>

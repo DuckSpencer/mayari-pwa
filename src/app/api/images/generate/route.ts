@@ -4,7 +4,8 @@ import { imageService, ImageRequest } from '@/lib/ai/image-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const text = await request.text();
+    const body = text ? JSON.parse(text) : {};
     const { prompt, width, height, style, numImages } = body;
 
     if (!prompt) {
@@ -16,8 +17,7 @@ export async function POST(request: NextRequest) {
 
     const imageRequest: ImageRequest = {
       prompt,
-      width,
-      height,
+      // width/height are not used by fal.ai payload currently; keep optional
       style: style || 'fantasy',
       numImages: numImages || 1,
     };

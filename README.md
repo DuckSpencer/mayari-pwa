@@ -4,6 +4,8 @@
 
 Mayari is a Progressive Web App (PWA) that creates personalized children's stories using artificial intelligence. Parents can generate educational explanations or fantasy stories tailored for children aged 2-5 years, turning daily questions into magical bedtime adventures.
 
+> Project Status: See `docs/technical/status.md` for the up-to-date implementation status and next actions.
+
 ## 🎯 Project Vision
 
 Mayari addresses two core challenges parents face:
@@ -25,7 +27,7 @@ The app creates an immersive, distraction-free reading experience that feels lik
 - **🤖 AI Image Generation**: FLUX.1 integration with Docker-compatible Axios implementation
 
 ### 🚧 In Development (Phase 2)
-- **🤖 AI Story Generation**: OpenRouter + Claude Sonnet 4 integration
+- **🤖 AI Story Generation**: OpenRouter + Claude Sonnet 4 integration (partially wired; structured pagination planned)
 - **📖 Story Creation Flow**: 2-page horizontal swipe navigation
 - **📚 Reading Experience**: Immersive full-screen story viewer
 - **💾 Story Management**: Save, share, and export functionality
@@ -48,8 +50,8 @@ The app creates an immersive, distraction-free reading experience that feels lik
 - **Security**: Row Level Security (RLS) policies
 
 ### AI Services
-- **Text Generation**: OpenRouter API (Claude Sonnet 4)
-- **Image Generation**: fal.ai FLUX.1 [dev] (Primary) - Fast & cost-effective
+- **Text Generation**: OpenRouter API (Claude Sonnet 4) — implemented in `src/lib/ai/openrouter.ts` and `/api/stories/generate`, `/api/stories/continue`
+- **Image Generation**: fal.ai FLUX.1 [schnell] (Primary) - Fast & cost-effective
 - **Prompt Engineering**: Structured prompts for child-appropriate content
 
 ### Development & Deployment
@@ -115,11 +117,10 @@ curl -X POST http://localhost:3001/api/images/flux-generate \
   -d '{"prompt": "A magical cat sitting on a windowsill with moonlight, watercolor painting style, child-friendly, warm colors", "width": 1024, "height": 1024}'
 ```
 
-### **Multi-Provider Architecture (Planned)**
-- **Primary**: fal.ai (cost-effective alternative)
-- **Fallback**: FLUX.1 (reliable backup)
-- **Error Handling**: Automatic failover between providers
-- **Configuration**: Environment-based provider selection
+### **Provider Strategy**
+- **Primary**: fal.ai (FLUX.1 [schnell])
+- **Fallback**: FLUX (optional, ADR pending)
+- Current implementation uses fal.ai only via `image-service.ts`.
 
 ## 📁 Project Structure
 

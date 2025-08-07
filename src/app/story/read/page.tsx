@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Home, BookOpen, Share2 } from 'lucide-react'
 
@@ -16,7 +16,10 @@ export default function StoryReadPage() {
   const [currentPage, setCurrentPage] = useState(0)
   const [storyPages, setStoryPages] = useState<string[]>([])
 
+  const initializedRef = useRef(false)
   useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
     const storyText = searchParams.get('story') || ''
     const storyImages = searchParams.get('images') ? JSON.parse(searchParams.get('images')!) : []
     
@@ -91,13 +94,15 @@ export default function StoryReadPage() {
 
   const currentStoryPage = storyPages[currentPage] || story
 
+  const bgUrl = images[currentPage] || images[0] || ''
+
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-gray-400 text-white font-sans relative overflow-hidden">
       {/* Background Image - Generated or fallback */}
-      {images.length > 0 ? (
+      {bgUrl ? (
         <div 
           className="absolute inset-0 w-full h-full bg-cover bg-center opacity-90"
-          style={{ backgroundImage: `url(${images[0]})` }}
+          style={{ backgroundImage: `url(${bgUrl})` }}
         ></div>
       ) : (
         <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#7B9AE0] to-[#D4C5F0] opacity-90"></div>
@@ -113,6 +118,10 @@ export default function StoryReadPage() {
         </button>
         <div className="text-center">
           <h1 className="font-['Poppins'] text-sm font-medium">Story</h1>
+          {/* Subtitle with mode/style/length from query */}
+          <p className="font-['Poppins'] text-[11px] text-white/70">
+            {(searchParams.get('mode') || 'fantasy')} · {(searchParams.get('style') || 'style1')} · {(searchParams.get('length') || 'medium')}
+          </p>
         </div>
         <button 
           onClick={handleShare}
@@ -155,7 +164,7 @@ export default function StoryReadPage() {
           <ChevronLeft size={24} />
         </button>
         
-        <span className="text-white/80 font-['Poppins'] text-sm">
+        <span className="text-white/80 font-['Poppins'] text-sm select-none pointer-events-none">
           {currentPage + 1} of {storyPages.length}
         </span>
         
