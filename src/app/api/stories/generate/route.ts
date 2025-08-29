@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           return 'comic illustration style, clean ink outlines, flat shading, bold shapes, child-friendly composition'
         case 'watercolor':
         default:
-          return 'soft watercolor painting, light paper texture, gentle gradients, warm colors, child-friendly'
+          return 'soft watercolor painting, light paper texture, gentle gradients, warm colors, child-friendly; blank, unmarked surfaces; minimal signage or labels'
       }
     }
 
@@ -142,7 +142,18 @@ export async function POST(request: NextRequest) {
     const castLines = cast.map(c => `- ${c.name} (${c.role}): ${c.attributes}`.slice(0, 100)).slice(0, 6).join('\n')
     const allowedCharacters = cast.map(c => c.name).join(', ')
 
-    const negatives = 'no speech bubbles, no talk balloons, no printed text, no large letters, no captions, no signage, no handwriting, no labels, no logos, no signatures, no autographs, no watermarks, no banners, no posters, no stickers, no emojis, no UI, no diagrams, no charts, typography absent, do not write any names (including "Mara"); no extra people, no extra children, no extra adults, no animals; no butterflies, no birds, no insects; no glitter, no sparkles, no hearts'
+    const negatives = [
+      // EN
+      'no speech bubbles, no talk balloons, no printed text, no large letters, no captions, no signage, no handwriting, no labels, no logos, no signatures, no autographs, no watermarks, no banners, no posters, no stickers, no emojis, no UI, no diagrams, no charts, typography absent, do not write any names (including "Mara")',
+      'no price tags, no shop signage, no shelf labels, no sale signs, no brand packaging text, no readable text anywhere',
+      // DE
+      'keine Sprechblasen, keine Schrift, keine großen Buchstaben, keine Beschriftungen, keine Schilder, keine Handschrift, keine Etiketten, keine Logos, keine Unterschriften, keine Wasserzeichen, keine Banner, keine Poster, keine Sticker, keine Emojis, kein UI, keine Diagramme, keine Tabellen, keine Typografie, keine Namen (inklusive "Mara")',
+      'keine Preisschilder, keine Ladenbeschilderung, keine Regaletiketten, keine Sale‑Schilder, keine Marken‑Verpackungstexte, nirgends lesbarer Text',
+      // People/animals
+      'no extra people, no background people, no partial figures',
+      'no animals, no butterflies, no birds, no insects',
+      'no glitter, no sparkles, no hearts',
+    ].join('; ')
 
     const characterSheetCompact = meta.character_sheet
       ? meta.character_sheet.split('\n').slice(0, 6).map(line => line.slice(0, 90)).join('\n')
@@ -161,12 +172,30 @@ export async function POST(request: NextRequest) {
       'Single scene, not a collage.'
     ].filter(Boolean).join('\n')
 
+    const coreChild = cast.find(c => c.role === 'child')?.name || 'the child'
+    const coreAdult = cast.find(c => c.role === 'adult')?.name || 'the adult caregiver'
+
+    const detectSideCharacters = (text: string): string[] => {
+      const lower = (text || '').toLowerCase()
+      return cast
+        .filter(c => c.role === 'other' && c.name)
+        .map(c => c.name)
+        .filter(name => lower.includes(name.toLowerCase()))
+        .slice(0, 1) // keep at most one extra to reduce clutter
+    }
+
     const makePrompt = (pageText: string, i: number) => {
       const scene = compactScene(pageText)
       const v = visuals[i]
-      const charRule = v && !v.include_characters
-        ? 'Do not include characters; focus on subjects only.'
-        : (allowedCharacters ? `Only include these characters if shown: ${allowedCharacters}. Do not add anyone else.` : '')
+      let header: string
+      if (v && v.include_characters === false) {
+        header = `ONLY ${v.subjects || 'the subjects described below'}. Absolutely no people, no hands, no faces, no characters, no body parts, no reflections. Empty background.`
+      } else {
+        const side = detectSideCharacters(pageText)
+        const visible = [coreChild, coreAdult, ...side]
+        header = `EXACTLY ${visible.length} people visible: ${visible.join(' and ')}. No other humans, no background people, no partial figures.`
+      }
+      const charRule = header
       const visualHints = v ? `Visual: shot=${v.shot}, camera=${v.camera}, time_of_day=${v.time_of_day}, lighting=${v.lighting}${v.environment ? `, environment=${v.environment}` : ''}. ${charRule} Subjects: ${v.subjects}.` : ''
       // Put Scene and Visual first so they never get truncated; append compact base
       const prompt = [`Scene: ${scene}`, visualHints, basePrefix].filter(Boolean).join('\n\n')
@@ -193,7 +222,7 @@ export async function POST(request: NextRequest) {
           // Use FLUX image_size to really enforce 4:3 instead of square
           image_size: 'landscape_4_3',
           num_inference_steps: 10,
-          guidance_scale: 4.5,
+          guidance_scale: 4.0,
           output_format: 'jpeg',
           enable_safety_checker: true,
           num_images: 1,
