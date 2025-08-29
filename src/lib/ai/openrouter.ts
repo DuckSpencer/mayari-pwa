@@ -14,6 +14,8 @@ export interface OpenRouterRequest {
   top_p?: number
   frequency_penalty?: number
   presence_penalty?: number
+  // OpenAI-compatible JSON mode
+  response_format?: { type: 'json_object' } | { type: string }
 }
 
 export interface OpenRouterResponse {
@@ -61,7 +63,7 @@ class OpenRouterClient {
     options: Partial<Omit<OpenRouterRequest, 'model' | 'messages'>> = {}
   ): Promise<OpenRouterResponse> {
     const requestBody: OpenRouterRequest = {
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-sonnet-4',
       messages,
       temperature: 0.7,
       max_tokens: 1000,
@@ -177,16 +179,21 @@ ${storyContext.theme ? `Theme: ${storyContext.theme}` : ''}`
       theme?: string
     } = {}
   ): Promise<{ title: string; pages: Array<{ text: string }> }> {
-    const systemPrompt = `You are an expert children's storyteller for ages 2-5. Return ONLY valid JSON with this exact shape and no extra text:
+    const systemPrompt = `You are an award‑winning picture‑book author and read‑aloud narrator for young children (roughly ages 3–7). Return ONLY valid JSON with this exact shape and no extra text:
 {
   "title": string,
   "pages": Array<{ "text": string }>
 }
-Rules:
+Rules (content):
+- Write the story in the same language as the user's input.
+- Page 1 opens warmly with a small hook and cozy setting (3–5 sentences), read‑aloud friendly cadence, varied sentence lengths.
+- Pages 2..${pageCount} use 2–4 sentences each; keep rhythm natural for read‑aloud (not telegraphic).
+- Maintain variety across pages (places, time of day, perspectives) and a gentle arc that resolves by the last page.
+- Keep tone kind and child‑safe; allow light sensory details and soft metaphors; avoid baby‑talk.
+- Avoid repetition of the same action page after page.
+Rules (structure):
 - pages.length MUST equal ${pageCount}
-- Each page text MUST contain 1-3 short sentences suitable for ages 2-5
-- Simple, kind language; positive tone; no scary content
-- Do not include markdown, code fences, or explanations.`
+- Return ONLY the JSON object above (no comments, no markdown, no extra keys)`
 
     const contextLines = [
       storyContext.childName ? `Child's name: ${storyContext.childName}` : undefined,
@@ -200,9 +207,14 @@ Rules:
       { role: 'user', content: `${userInput}${contextLines ? `\n\n${contextLines}` : ''}` }
     ]
 
+    // Generous cap: ~6000 tokens or adaptive estimate with buffer
+    const estimated = Math.min(6000, Math.max(2000, pageCount * 5 * 40 + 1200))
     const response = await this.generateText(messages, {
-      temperature: 0.7,
-      max_tokens: 1200,
+      temperature: 0.65,
+      max_tokens: estimated,
+      presence_penalty: 0.3,
+      frequency_penalty: 0.25,
+      response_format: { type: 'json_object' },
     })
 
     const raw = response.choices[0]?.message?.content ?? ''
@@ -210,6 +222,134 @@ Rules:
 
     const normalized = this.normalizePagedStory(parsed, pageCount)
     return normalized
+  }
+
+  /**
+   * Extract a compact character sheet and a 1–2 sentence summary from a paged story.
+   * Returns plain JSON to be embedded in image prompts for consistency.
+   */
+  async extractStoryMetadata(paged: { title: string; pages: Array<{ text: string }> }): Promise<{ summary: string; character_sheet: string }> {
+    const storyText = [
+      `Title: ${paged.title}`,
+      ...paged.pages.map((p, i) => `Page ${i + 1}: ${p.text}`)
+    ].join('\n')
+
+    const systemPrompt = `You are a helpful assistant extracting concise metadata for children's picture book illustrations. Return ONLY valid JSON with this shape and nothing else:\n{\n  "summary": string,\n  "character_sheet": string\n}\nRules:\n- summary: 1-2 simple sentences covering setting and main goal.\n- character_sheet: 4-8 short bullet-like lines (separated by line breaks), describing stable visual attributes of the main recurring characters (name, age, skin/hair/eye, clothing colors, companions).\n- No markdown, no extra fields.`
+
+    const messages: OpenRouterMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: storyText.slice(0, 4000) } // keep prompt reasonably bounded
+    ]
+
+    const response = await this.generateText(messages, {
+      temperature: 0.4,
+      max_tokens: 400,
+    })
+
+    const raw = response.choices[0]?.message?.content ?? ''
+    try {
+      const parsed = JSON.parse(raw.trim()) as { summary?: string; character_sheet?: string }
+      return {
+        summary: (parsed.summary || '').toString().slice(0, 320),
+        character_sheet: (parsed.character_sheet || '').toString().slice(0, 800),
+      }
+    } catch {
+      // Fallback: derive a naive summary from first and last page; character sheet empty
+      const first = paged.pages[0]?.text || ''
+      const last = paged.pages[paged.pages.length - 1]?.text || ''
+      const summary = `${first} ${last}`.trim().slice(0, 320)
+      return { summary, character_sheet: '' }
+    }
+  }
+
+  /**
+   * Plan per-page visuals (shot type, presence of characters, environment, time of day, lighting).
+   * Returns an array with length equal to paged.pages.
+   */
+  async planVisuals(
+    paged: { title: string; pages: Array<{ text: string }> },
+    opts: { defaultStyle?: string } = {}
+  ): Promise<Array<{
+    include_characters: boolean
+    subjects: string
+    shot: 'wide' | 'medium' | 'closeup' | 'detail'
+    camera: 'eye-level' | 'low' | 'high'
+    environment: string
+    time_of_day: 'day' | 'sunset' | 'night' | 'dawn'
+    lighting: string
+  }>> {
+    const system = `You are a storyboard artist for children's picture books. Return ONLY valid JSON with this exact shape and no extra text:\n{ "pages": Array<{\n  "include_characters": boolean,\n  "subjects": string,\n  "shot": "wide" | "medium" | "closeup" | "detail",\n  "camera": "eye-level" | "low" | "high",\n  "environment": string,\n  "time_of_day": "day" | "sunset" | "night" | "dawn",\n  "lighting": string\n}> }\nRules:\n- If the page focuses on objects/nature (e.g., the moon), set include_characters=false and describe only those subjects.\n- Choose varied shots across pages (not all the same).\n- Keep fields short (<= 8 words each).\n- Kid-safe, gentle scenes only.`
+
+    const user = [
+      `Title: ${paged.title}`,
+      ...paged.pages.map((p, i) => `Page ${i + 1}: ${p.text}`)
+    ].join('\n')
+
+    try {
+      const resp = await this.generateText([
+        { role: 'system', content: system },
+        { role: 'user', content: user.slice(0, 4000) }
+      ], { temperature: 0.5, max_tokens: 900 })
+      const raw = resp.choices[0]?.message?.content ?? ''
+      const parsed = JSON.parse(raw.trim()) as { pages?: any[] }
+      const pages = Array.isArray(parsed.pages) ? parsed.pages : []
+      // Normalize length
+      return paged.pages.map((_, i) => {
+        const item = pages[i] || {}
+        return {
+          include_characters: Boolean(item.include_characters),
+          subjects: (item.subjects || '').toString().slice(0, 80) || 'main characters',
+          shot: ['wide','medium','closeup','detail'].includes(item.shot) ? item.shot : 'medium',
+          camera: ['eye-level','low','high'].includes(item.camera) ? item.camera : 'eye-level',
+          environment: (item.environment || '').toString().slice(0, 60),
+          time_of_day: ['day','sunset','night','dawn'].includes(item.time_of_day) ? item.time_of_day : 'day',
+          lighting: (item.lighting || '').toString().slice(0, 60) || 'soft natural light',
+        }
+      })
+    } catch {
+      // Fallback: default medium shot with characters
+      return paged.pages.map(() => ({
+        include_characters: true,
+        subjects: 'main characters',
+        shot: 'medium' as const,
+        camera: 'eye-level' as const,
+        environment: '',
+        time_of_day: 'day' as const,
+        lighting: 'soft natural light',
+      }))
+    }
+  }
+
+  /**
+   * Extract a cast list (stable recurring characters) with short visual attributes.
+   */
+  async extractCast(paged: { title: string; pages: Array<{ text: string }> }): Promise<Array<{ name: string; role: 'child' | 'adult' | 'other'; attributes: string }>> {
+    const system = `You are listing the recurring characters for a children's picture book. Return ONLY valid JSON with this shape:\n{ "characters": Array<{ "name": string, "role": "child" | "adult" | "other", "attributes": string }> }\nRules:\n- attributes: <= 80 chars; include hair/eyes, clothing colors, notable item (e.g., backpack).\n- 1-4 main characters only; do not include animals unless central.`
+
+    const user = [
+      `Title: ${paged.title}`,
+      ...paged.pages.map((p, i) => `Page ${i + 1}: ${p.text}`)
+    ].join('\n')
+
+    try {
+      const resp = await this.generateText([
+        { role: 'system', content: system },
+        { role: 'user', content: user.slice(0, 3500) }
+      ], { temperature: 0.4, max_tokens: 500 })
+      const raw = resp.choices[0]?.message?.content ?? ''
+      const parsed = JSON.parse(raw.trim()) as { characters?: Array<{ name?: string; role?: string; attributes?: string }> }
+      const list = Array.isArray(parsed.characters) ? parsed.characters : []
+      return list
+        .map(c => ({
+          name: (c.name || '').toString().slice(0, 40),
+          role: (['child','adult','other'].includes((c.role || '') as any) ? c.role : 'other') as 'child' | 'adult' | 'other',
+          attributes: (c.attributes || '').toString().slice(0, 120)
+        }))
+        .filter(c => c.name)
+        .slice(0, 4)
+    } catch {
+      return []
+    }
   }
 
   /**

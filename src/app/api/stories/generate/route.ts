@@ -60,16 +60,61 @@ export async function POST(request: NextRequest) {
 
     // Generate paginated story using OpenRouter (structured JSON)
     const paged = await openRouterClient.generatePagedStory(userInput, pageCount, storyContext)
+    // Derive compact story metadata for image prompting
+    const meta = await openRouterClient.extractStoryMetadata(paged)
+    const cast = await openRouterClient.extractCast(paged)
     const title = paged.title
-    const text_content = paged.pages.map(p => p.text)
+    const text_content_raw = paged.pages.map(p => p.text)
+    // Ensure non-empty page texts so reader pagination and prompts stay valid
+    const text_content = text_content_raw.map((t, i) => {
+      const s = (t || '').toString().trim()
+      if (s.length > 0) return s
+      const fallback = (meta.summary || '').toString().trim()
+      return fallback ? fallback : `Page ${i + 1}`
+    })
+    // Visual plan per page to add variety (shot, environment, time of day)
+    let visuals = await openRouterClient.planVisuals(paged)
+    // Enforce variety if the planner returned too-homogeneous hints
+    const enforceVariety = (arr: typeof visuals) => {
+      const n = arr.length
+      const shots = ['wide','medium','closeup','detail'] as const
+      const counts: Record<string, number> = { wide:0, medium:0, closeup:0, detail:0 }
+      // First pass: ensure valid shot values and count
+      arr = arr.map(v => {
+        const shot = (['wide','medium','closeup','detail'] as const).includes(v.shot) ? v.shot : 'medium'
+        counts[shot]++
+        return { ...v, shot }
+      })
+      // If any shot type is missing, assign cyclically
+      let i = 0
+      for (const s of shots) {
+        if (counts[s] === 0) {
+          arr[i] = { ...arr[i], shot: s }
+          i++
+        }
+      }
+      // Guarantee at least ~25% pages without characters for subject-only compositions
+      const targetNoChars = Math.max(1, Math.floor(n * 0.25))
+      let haveNoChars = arr.filter(v => !v.include_characters).length
+      for (let k = 1; haveNoChars < targetNoChars && k < n; k += 3) {
+        if (arr[k].include_characters !== false) {
+          arr[k] = { ...arr[k], include_characters: false, subjects: arr[k].subjects || 'scene objects only' }
+          haveNoChars++
+        }
+      }
+      return arr
+    }
+    visuals = enforceVariety(visuals)
 
     // Generate one image per page (limited concurrency)
     const concurrency = 3
     const image_urls: string[] = new Array(pageCount).fill('')
-    // Derive a deterministic seed from userInput to promote visual consistency
-    const seed = Math.abs(
+    // Derive a deterministic seed from userInput to promote visual consistency (constant per story)
+    let seed = Math.abs(
       Array.from(userInput).reduce((acc, ch) => ((acc << 5) - acc) + ch.charCodeAt(0), 0)
     ) || Math.floor(Math.random() * 2147483647)
+    // Clamp to 32-bit range for determinism across providers
+    seed = seed % 2147483647
 
     const styleDescriptor = (style: typeof artStyle): string => {
       switch (style) {
@@ -85,32 +130,84 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const makePrompt = (pageText: string) => {
-      const typeHint = storyType === 'fantasy'
-        ? 'fantasy vibe, magical elements, whimsical, vibrant yet soft, child-friendly'
-        : 'realistic vibe, natural lighting, gentle and child-friendly'
-      const artHint = styleDescriptor(artStyle)
-      const noTextRule = 'no text, no letters, no captions, no watermarks, no signage, no subtitles, no logos'
-      const consistencyRule = 'keep main character design consistent across all pages (hair, clothing, colors, species)'
-      return `Illustration for a children\'s story page: ${pageText}. ${typeHint}. ${artHint}. ${consistencyRule}. ${noTextRule}. High quality, warm colors.`
+    // Scene text compaction: aim for <= 200 chars
+    const compactScene = (s: string): string => {
+      const text = (s || '').replace(/\s+/g, ' ').trim().slice(0, 200)
+      if (text) return text
+      const fallback = (meta.summary || '').toString().replace(/\s+/g, ' ').trim().slice(0, 200)
+      return fallback || 'A gentle, child-friendly moment from the story.'
+    }
+
+    // Build Cast-Lock and Negatives (compact)
+    const castLines = cast.map(c => `- ${c.name} (${c.role}): ${c.attributes}`.slice(0, 100)).slice(0, 6).join('\n')
+    const allowedCharacters = cast.map(c => c.name).join(', ')
+
+    const negatives = 'no speech bubbles, no talk balloons, no printed text, no large letters, no captions, no signage, no handwriting, no labels, no logos, no signatures, no autographs, no watermarks, no banners, no posters, no stickers, no emojis, no UI, no diagrams, no charts, typography absent, do not write any names (including "Mara"); no extra people, no extra children, no extra adults, no animals; no butterflies, no birds, no insects; no glitter, no sparkles, no hearts'
+
+    const characterSheetCompact = meta.character_sheet
+      ? meta.character_sheet.split('\n').slice(0, 6).map(line => line.slice(0, 90)).join('\n')
+      : undefined
+
+    const basePrefix = [
+      `Children's picture book illustration (${artStyle}).`,
+      'Art Direction:',
+      styleDescriptor(artStyle),
+      storyType === 'fantasy' ? 'fantasy, whimsical, warm cozy palette' : 'natural, gentle, child-friendly',
+      'Kid-safe, wholesome, fully clothed, neutral eye-level camera, no suggestive pose.',
+      negatives,
+      characterSheetCompact ? `Character Sheet (use EXACTLY across all pages):\n${characterSheetCompact}` : undefined,
+      castLines ? `Allowed Characters Only:\n${castLines}` : undefined,
+      'Appearance lock: keep the same face, hair, eyes, skin tone, outfit colors/shapes and proportions for each recurring character on every page; do not redesign characters.',
+      'Single scene, not a collage.'
+    ].filter(Boolean).join('\n')
+
+    const makePrompt = (pageText: string, i: number) => {
+      const scene = compactScene(pageText)
+      const v = visuals[i]
+      const charRule = v && !v.include_characters
+        ? 'Do not include characters; focus on subjects only.'
+        : (allowedCharacters ? `Only include these characters if shown: ${allowedCharacters}. Do not add anyone else.` : '')
+      const visualHints = v ? `Visual: shot=${v.shot}, camera=${v.camera}, time_of_day=${v.time_of_day}, lighting=${v.lighting}${v.environment ? `, environment=${v.environment}` : ''}. ${charRule} Subjects: ${v.subjects}.` : ''
+      // Put Scene and Visual first so they never get truncated; append compact base
+      const prompt = [`Scene: ${scene}`, visualHints, basePrefix].filter(Boolean).join('\n\n')
+      // Allow longer prompts (FAL accepts long strings); cap softly
+      return prompt.slice(0, 2400)
+    }
+
+    const makeExtraSafePrompt = (pageText: string) => {
+      // Replace potentially sensitive pose words with neutral, kid-safe poses
+      const normalized = (pageText || '').replace(/kneels?|crouch(?:es)?/gi, 'sits cross‑legged').replace(/pose/gi, 'posture')
+      const scene = compactScene(normalized || 'Child stands upright, smiling, eye‑level, relaxed posture in a public park.')
+      const extra = basePrefix + '\nKid-safe emphasis: neutral eye-level, sitting or standing, relaxed posture.'
+      return `${extra}\n\nScene:\n${scene}`.slice(0, 1200)
     }
     const tasks = text_content.map((txt, i) => async () => {
-      const prompt = makePrompt(txt)
+      let prompt = makePrompt(txt, i)
+      console.log(`[images] Page ${i + 1}/${pageCount} seed=${seed} prompt=\n${prompt}`)
       const maxRetries = 2
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const negative = negatives
         const resp = await falClient.generateImages({
           prompt,
-          image_size: 'square_hd',
-          num_inference_steps: 6,
+          negative_prompt: negative,
+          // Use FLUX image_size to really enforce 4:3 instead of square
+          image_size: 'landscape_4_3',
+          num_inference_steps: 10,
+          guidance_scale: 4.5,
           output_format: 'jpeg',
           enable_safety_checker: true,
           num_images: 1,
-          seed: seed + i,
+          // lock seed per story to preserve identity across pages
+          seed,
         })
-        if (resp.success && resp.images && resp.images[0]) {
+        const nsfw = Array.isArray(resp.has_nsfw_concepts) ? resp.has_nsfw_concepts[0] : false
+        if (resp.success && resp.images && resp.images[0] && !nsfw) {
           image_urls[i] = resp.images[0]
           return
         }
+        console.warn(`[images] Page ${i + 1} attempt ${attempt + 1} failed or NSFW flagged=${nsfw}. Retrying with safer prompt...`)
+        // For next attempt, switch to extra-safe phrasing
+        prompt = makeExtraSafePrompt(txt)
         await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
       }
       // Fallback placeholder to keep arrays aligned
