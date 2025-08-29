@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BookOpen, Plus, PenTool, Save, Share2, Download } from 'lucide-react'
+import { HomeButton } from '@/components/HomeButton'
 
 interface StoryData {
   story: string
@@ -126,9 +127,12 @@ export default function StoryEndPage() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans bg-[#FFF8F0]">
-      {/* Header */}
-      <div className="w-full pt-8">
+    <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans bg-[#FFF8F0] relative">
+      {/* Home Button */}
+      <HomeButton />
+      
+      {/* Header - mit korrektem Abstand für HomeButton */}
+      <div className="w-full pt-16">
         <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50] text-center">
           The End
         </h2>
@@ -161,23 +165,33 @@ export default function StoryEndPage() {
         <div className="w-full space-y-4">
           <button 
             onClick={handleReadAgain}
-            className="w-full h-[52px] rounded-full bg-[#7B9AE0] text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105"
+            className="w-full h-[52px] rounded-full bg-[#7B9AE0] text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
           >
             <BookOpen size={20}/> Read Again
           </button>
           
           <button 
             onClick={handleNewStory}
-            className="w-full h-[52px] rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105 shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
+            className="w-full h-[52px] rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
           >
             <Plus size={20}/> New Story
           </button>
           
           <button 
             onClick={handleContinueStory}
-            className="w-full h-[52px] rounded-full bg-[#F7F1E8] border-2 border-[#7B9AE0] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105"
+            className="w-full h-[52px] rounded-full bg-[#F7F1E8] border-2 border-[#7B9AE0] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
           >
             <PenTool size={20}/> Continue Story
+          </button>
+        </div>
+
+        {/* My Stories Button */}
+        <div className="w-full">
+          <button 
+            onClick={() => router.push('/stories')}
+            className="w-full h-[48px] rounded-full bg-[#F7F1E8] border-2 border-[#7B9AE0] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] hover:bg-[#D4C5F0]"
+          >
+            <BookOpen size={18}/> My Stories
           </button>
         </div>
 
@@ -216,7 +230,7 @@ export default function StoryEndPage() {
       <div className="w-full pb-8">
         <button 
           onClick={() => router.push('/')}
-          className="w-full h-[48px] rounded-full bg-[#F7F1E8] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105"
+          className="w-full h-[48px] rounded-full bg-[#F7F1E8] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
         >
           Back to Home
         </button>

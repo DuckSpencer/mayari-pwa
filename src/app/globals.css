@@ -47,15 +47,33 @@ body {
 
 /* Button Styles */
 .btn-primary {
-  @apply w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105 shadow-button-primary;
+  @apply w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] shadow-button-primary;
 }
 
 .btn-secondary {
-  @apply w-full h-[48px] rounded-full bg-secondary-cream border-2 border-primary-blue text-primary-navy font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105;
+  @apply w-full h-[48px] rounded-full bg-secondary-cream border-2 border-primary-blue text-primary-navy font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02];
 }
 
 .btn-magic {
-  @apply w-full h-[56px] rounded-full bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105 shadow-button-magic;
+  @apply w-full h-[56px] rounded-full bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] shadow-button-magic;
+}
+
+/* Global Button Hover Fix - Verhindert Überlauf über Viewport-Grenzen */
+button, .btn-primary, .btn-secondary, .btn-magic {
+  transform-origin: center;
+  overflow: hidden;
+}
+
+/* Sanftere Hover-Effekte für alle Buttons */
+button:hover, .btn-primary:hover, .btn-secondary:hover, .btn-magic:hover {
+  transform: scale(1.02) !important;
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Alternative: Nur leichte Schatten-Änderung statt Skalierung */
+button:focus, .btn-primary:focus, .btn-secondary:focus, .btn-magic:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(123, 154, 224, 0.3);
 }
 
 /* Magical Background */
@@ -80,6 +98,20 @@ body {
 
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Home Button - Global Navigation */
+.home-button {
+  @apply fixed top-6 left-6 z-50 h-12 w-12 rounded-full bg-secondary-cream border-2 border-primary-blue/30 text-primary-navy flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary-blue hover:bg-white shadow-lg;
+}
+
+.home-button:hover {
+  box-shadow: 0 8px 25px rgba(123, 154, 224, 0.3);
+}
+
+.home-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(123, 154, 224, 0.3);
 }
 
 /* Touch Target */

@@ -6,41 +6,65 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Filter, Trash2, Share2, Download } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { HomeButton } from '@/components/HomeButton'
 
 interface SavedStory {
   id: string
-  title: string
-  story: string
-  images: string[]
-  config: {
-    input: string
-    mode: 'realistic' | 'fantasy'
-    style: string
-    length: string
-  }
-  createdAt: string
+  prompt: string
+  story_type: 'realistic' | 'fantasy'
+  art_style: string
+  page_count: number
+  image_urls: string[]
+  text_content: string[]
+  created_at: string
 }
 
 export default function StoriesPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [stories, setStories] = useState<SavedStory[]>([])
   const [filteredStories, setFilteredStories] = useState<SavedStory[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'fantasy' | 'realistic'>('all')
   const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    loadStories()
-  }, [])
+    if (user) {
+      loadStories()
+    } else {
+      setIsLoading(false)
+    }
+  }, [user])
 
   useEffect(() => {
     filterStories()
   }, [stories, searchTerm, selectedFilter])
 
-  const loadStories = () => {
+  const loadStories = async () => {
     try {
-      const savedStories = JSON.parse(localStorage.getItem('mayari-stories') || '[]')
-      setStories(savedStories)
+      setIsLoading(true)
+      
+      if (!user) {
+        setStories([])
+        return
+      }
+
+      // Load stories from Supabase database
+      const { data, error } = await supabase
+        .from('stories')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading stories from database:', error)
+        setStories([])
+      } else {
+        setStories(data || [])
+      }
     } catch (error) {
       console.error('Error loading stories:', error)
       setStories([])
@@ -55,14 +79,14 @@ export default function StoriesPage() {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(story => 
-        story.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        story.story.toLowerCase().includes(searchTerm.toLowerCase())
+        story.prompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        story.text_content.some(text => text.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 
     // Filter by type
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(story => story.config?.mode === selectedFilter)
+      filtered = filtered.filter(story => story.story_type === selectedFilter)
     }
 
     setFilteredStories(filtered)
@@ -70,29 +94,46 @@ export default function StoriesPage() {
 
   const handleStoryClick = (story: SavedStory) => {
     const params = new URLSearchParams({
-      story: story.story,
-      images: JSON.stringify(story.images)
+      story: story.text_content.join('\n\n'),
+      images: JSON.stringify(story.image_urls)
     })
     router.push(`/story/read?${params.toString()}`)
   }
 
-  const handleDeleteStory = (storyId: string) => {
+  const handleDeleteStory = async (storyId: string) => {
     if (confirm('Are you sure you want to delete this story?')) {
-      const updatedStories = stories.filter(story => story.id !== storyId)
-      setStories(updatedStories)
-      localStorage.setItem('mayari-stories', JSON.stringify(updatedStories))
+      try {
+        // Delete from database
+        const { error } = await supabase
+          .from('stories')
+          .delete()
+          .eq('id', storyId)
+          .eq('user_id', user?.id)
+
+        if (error) {
+          console.error('Error deleting story:', error)
+          alert('Failed to delete story. Please try again.')
+        } else {
+          // Update local state
+          const updatedStories = stories.filter(story => story.id !== storyId)
+          setStories(updatedStories)
+        }
+      } catch (error) {
+        console.error('Error deleting story:', error)
+        alert('Failed to delete story. Please try again.')
+      }
     }
   }
 
   const handleShareStory = (story: SavedStory) => {
     if (navigator.share) {
       navigator.share({
-        title: story.title,
-        text: story.story.substring(0, 100) + '...',
+        title: `Story: ${story.prompt}`,
+        text: story.text_content.join('\n\n').substring(0, 100) + '...',
         url: window.location.href
       })
     } else {
-      navigator.clipboard.writeText(story.story)
+      navigator.clipboard.writeText(story.text_content.join('\n\n'))
       alert('Story copied to clipboard!')
     }
   }
@@ -111,6 +152,26 @@ export default function StoriesPage() {
     })
   }
 
+  if (!user) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF8F0]">
+        <div className="text-[#95A5A6] text-6xl mb-4">🔐</div>
+        <h2 className="text-2xl font-semibold font-['Poppins'] text-[#2C3E50] text-center">
+          Please log in to view your stories
+        </h2>
+        <p className="text-base font-['Georgia'] text-[#95A5A6] mt-2 text-center">
+          Your stories are saved securely in your account.
+        </p>
+        <button 
+          onClick={() => router.push('/auth/login')}
+                          className="mt-6 h-[52px] px-8 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center gap-2 transition-transform hover:scale-[1.02] shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
+        >
+          Log In
+        </button>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF8F0]">
@@ -121,16 +182,19 @@ export default function StoriesPage() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#FFF8F0]">
-      {/* Header */}
-      <div className="w-full p-6 pb-4">
+    <div className="w-full h-full flex flex-col bg-[#FFF8F0] relative">
+      {/* Home Button */}
+      <HomeButton />
+      
+      {/* Header - mit korrektem Abstand für HomeButton */}
+      <div className="w-full p-6 pb-4 pt-16">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-semibold font-['Poppins'] text-[#2C3E50]">
             My Stories
           </h1>
           <button 
             onClick={() => router.push('/story/setup')}
-            className="h-[48px] px-6 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center gap-2 transition-transform hover:scale-105 shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
+            className="h-[48px] px-6 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center gap-2 transition-transform hover:scale-[1.02] shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
           >
             <Plus size={20}/> New Story
           </button>
@@ -182,7 +246,7 @@ export default function StoriesPage() {
             {stories.length === 0 && (
               <button 
                 onClick={() => router.push('/story/setup')}
-                className="mt-6 h-[52px] px-8 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center gap-2 transition-transform hover:scale-105 shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
+                className="mt-6 h-[52px] px-8 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base flex items-center gap-2 transition-transform hover:scale-[1.02] shadow-[0px_4px_12px_rgba(255,138,101,0.3)]"
               >
                 <Plus size={20}/> Create Your First Story
               </button>
@@ -198,10 +262,10 @@ export default function StoriesPage() {
               >
                 {/* Story Thumbnail */}
                 <div className="w-full h-32 rounded-xl overflow-hidden mb-3 bg-gradient-to-br from-[#7B9AE0] to-[#D4C5F0] flex items-center justify-center">
-                  {story.images.length > 0 ? (
+                  {story.image_urls && story.image_urls.length > 0 ? (
                     <img 
-                      src={story.images[0]} 
-                      alt={story.title}
+                      src={story.image_urls[0]} 
+                      alt={story.prompt}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -212,21 +276,24 @@ export default function StoriesPage() {
                 {/* Story Info */}
                 <div className="space-y-2">
                   <h3 className="font-['Poppins'] font-semibold text-[#2C3E50] line-clamp-2">
-                    {story.title}
+                    {story.prompt}
                   </h3>
                   <p className="text-sm font-['Georgia'] text-[#95A5A6] line-clamp-2">
-                    {story.story.substring(0, 80)}...
+                    {story.text_content && story.text_content.length > 0 
+                      ? story.text_content[0].substring(0, 80) + '...'
+                      : 'Story content loading...'
+                    }
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-['Poppins'] text-[#95A5A6]">
-                      {formatDate(story.createdAt)}
+                      {formatDate(story.created_at)}
                     </span>
                      <span className={`text-xs font-['Poppins'] px-2 py-1 rounded-full ${
-                      (story.config?.mode || 'fantasy') === 'fantasy' 
+                      story.story_type === 'fantasy' 
                         ? 'bg-[#BB8FCE]/20 text-[#BB8FCE]' 
                         : 'bg-[#5DADE2]/20 text-[#5DADE2]'
                     }`}>
-                      {(story.config?.mode || 'fantasy') === 'fantasy' ? 'Fantasy' : 'Realistic'}
+                      {story.story_type === 'fantasy' ? 'Fantasy' : 'Realistic'}
                     </span>
                   </div>
                 </div>

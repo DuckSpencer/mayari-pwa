@@ -57,6 +57,8 @@ export default function StoryReadPage() {
   }
 
   const handleHome = () => {
+    console.log('Home button clicked!') // Debug log
+    console.log('Router:', router) // Debug router
     router.push('/')
   }
 
@@ -108,16 +110,17 @@ export default function StoryReadPage() {
         <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#7B9AE0] to-[#D4C5F0] opacity-90"></div>
       )}
       
-      {/* Navigation Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm z-10 flex justify-between items-center">
+      {/* Navigation Header - SICHERER BEREICH OBEN */}
+      <div className="absolute top-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm z-20 flex justify-between items-center">
         <button 
           onClick={handleHome}
-          className="p-2 rounded-full bg-white/20 backdrop-blur-sm"
+          className="p-3 rounded-full bg-white/20 backdrop-blur-sm transition-colors duration-300 border border-white/30 hover:bg-white/35 active:bg-white/40 cursor-pointer pointer-events-auto relative z-30"
+          type="button"
         >
           <Home size={20} className="text-white" />
         </button>
         <div className="text-center">
-          <h1 className="font-['Poppins'] text-sm font-medium">Story</h1>
+          <h1 className="font-['Poppins'] text-sm font-medium text-white">Story</h1>
           {/* Subtitle with mode/style/length from query */}
           <p className="font-['Poppins'] text-[11px] text-white/70">
             {(searchParams.get('mode') || 'fantasy')} · {(searchParams.get('style') || 'style1')} · {(searchParams.get('length') || 'medium')}
@@ -125,55 +128,62 @@ export default function StoryReadPage() {
         </div>
         <button 
           onClick={handleShare}
-          className="p-2 rounded-full bg-white/20 backdrop-blur-sm"
+          className="p-3 rounded-full bg-white/20 backdrop-blur-sm transition-colors duration-300 border border-white/30 hover:bg-white/35 active:bg-white/40 cursor-pointer pointer-events-auto relative z-30"
+          type="button"
         >
           <Share2 size={20} className="text-white" />
         </button>
       </div>
 
-      {/* Story Content */}
-      <div className="relative p-8 mt-auto w-full z-10">
-        <p className="font-['Georgia'] text-2xl/relaxed text-center" style={{textShadow: '0 2px 4px rgba(0,0,0,0.5)'}}>
+      {/* Story Content - NUR BILD, KEIN TEXT */}
+      <div className="relative flex-1 flex items-center justify-center w-full z-10">
+        {/* Bild wird über den Hintergrund angezeigt, kein zusätzlicher Text-Container */}
+      </div>
+
+      {/* SEPARATER TEXT-BEREICH - ÜBER DER NAVIGATION */}
+      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 px-4 py-4 sm:px-8 sm:py-5 bg-black/35 backdrop-blur-md rounded-full border border-white/30 w-[calc(100%-2rem)] sm:w-auto sm:max-w-2xl lg:max-w-3xl shadow-lg">
+        <p className="font-['Georgia'] text-lg sm:text-xl/relaxed text-white font-medium text-center break-words leading-tight" style={{
+          textShadow: '0 1px 4px rgba(0,0,0,0.8)'
+        }}>
           {currentStoryPage}
         </p>
       </div>
 
-      {/* Page Navigation */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-        {storyPages.map((_, index) => (
-          <div 
-            key={index} 
-            className={`w-2 h-2 rounded-full transition-all ${
-              index <= currentPage ? 'bg-[#F4D03F]' : 'bg-white/50'
+      {/* SICHERER BEREICH UNTEN - NUR NAVIGATION UND PAGINATION */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm z-10">
+        {/* Navigation Buttons und Pagination Dots - ALLE AUF GLEICHER HÖHE */}
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className={`p-3 rounded-full backdrop-blur-sm transition-colors duration-300 border border-white/30 ${
+              currentPage === 0 
+                ? 'bg-white/10 text-white/30 cursor-not-allowed' 
+                : 'bg-white/20 text-white hover:bg-white/35 active:bg-white/40'
             }`}
-          ></div>
-        ))}
-      </div>
-
-      {/* Navigation Buttons */}
-      <div className="absolute bottom-6 left-4 right-4 flex justify-between items-center z-10">
-        <button 
-          onClick={handlePrevPage}
-          disabled={currentPage === 0}
-          className={`p-3 rounded-full backdrop-blur-sm transition-all ${
-            currentPage === 0 
-              ? 'bg-white/10 text-white/30' 
-              : 'bg-white/20 text-white hover:bg-white/30'
-          }`}
-        >
-          <ChevronLeft size={24} />
-        </button>
-        
-        <span className="text-white/80 font-['Poppins'] text-sm select-none pointer-events-none">
-          {currentPage + 1} of {storyPages.length}
-        </span>
-        
-        <button 
-          onClick={handleNextPage}
-          className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all"
-        >
-          <ChevronRight size={24} />
-        </button>
+          >
+            <ChevronLeft size={24} />
+          </button>
+          
+          {/* Pagination Dots - AUF GLEICHER HÖHE WIE BUTTONS */}
+          <div className="flex gap-2">
+            {storyPages.map((_, index) => (
+              <div 
+                key={index} 
+                className={`w-3 h-3 rounded-full transition-all ${
+                  index === currentPage ? 'bg-[#F4D03F] shadow-lg' : 'bg-white/50'
+                }`}
+              ></div>
+            ))}
+          </div>
+          
+          <button 
+            onClick={handleNextPage}
+            className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white transition-colors duration-300 border border-white/30 hover:bg-white/35 active:bg-white/40"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Decorative Elements */}

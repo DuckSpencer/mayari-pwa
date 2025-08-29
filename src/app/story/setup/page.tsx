@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Lightbulb, Wand2 } from 'lucide-react'
+import { HomeButton } from '@/components/HomeButton'
 
 export default function StorySetupPage() {
   const [mode, setMode] = useState<'realistic' | 'fantasy'>('fantasy')
@@ -21,6 +22,9 @@ export default function StorySetupPage() {
 
   return (
     <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans relative bg-[#FFF8F0]">
+      {/* Home Button */}
+      <HomeButton />
+      
       {/* Background gradient based on mode */}
       <div className={`absolute inset-0 transition-all duration-700 ease-in-out -z-10 ${
         mode === 'realistic' 
@@ -28,8 +32,8 @@ export default function StorySetupPage() {
           : 'bg-gradient-to-br from-[#BB8FCE]/20 to-[#FFF8F0]'
       }`}></div>
 
-      {/* Header */}
-      <div className="w-full pt-8 z-10">
+      {/* Header - mit korrektem Abstand für HomeButton */}
+      <div className="w-full pt-16">
         <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50]">
           What should your story be about?
         </h2>
@@ -83,7 +87,7 @@ export default function StorySetupPage() {
         <button 
           onClick={handleNext}
           disabled={!userInput.trim()}
-          className={`w-full h-[52px] rounded-full text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105 ${
+          className={`w-full h-[52px] rounded-full text-white font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] ${
             userInput.trim() 
               ? 'bg-[#7B9AE0]' 
               : 'bg-[#95A5A6] cursor-not-allowed'

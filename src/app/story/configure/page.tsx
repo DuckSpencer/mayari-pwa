@@ -6,12 +6,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Sparkles, Feather } from 'lucide-react'
+import { HomeButton } from '@/components/HomeButton'
 
 interface StoryConfig {
   input: string
   mode: 'realistic' | 'fantasy'
-  style: string
-  length: string
+  style: 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic'
+  length: 8 | 12 | 16
 }
 
 export default function StoryConfigurePage() {
@@ -21,8 +22,8 @@ export default function StoryConfigurePage() {
   const [config, setConfig] = useState<StoryConfig>({
     input: '',
     mode: 'fantasy',
-    style: 'style1',
-    length: 'medium'
+    style: 'watercolor',
+    length: 12
   })
 
   useEffect(() => {
@@ -37,16 +38,16 @@ export default function StoryConfigurePage() {
   }, [searchParams])
 
   const styles = [
-    { id: 'style1', name: 'Peppa Pig Style', color: '#F1948A' },
-    { id: 'style2', name: 'Pixi-Buch Style', color: '#A8E6CF' },
-    { id: 'style3', name: 'Ghibli Style', color: '#7B9AE0' },
-    { id: 'style4', name: 'Cartoon Style', color: '#F4D03F' },
+    { id: 'peppa-pig', name: 'Peppa Pig Style', color: '#F1948A' },
+    { id: 'pixi-book', name: 'Pixi-Buch Style', color: '#A8E6CF' },
+    { id: 'watercolor', name: 'Ghibli Style', color: '#7B9AE0' },
+    { id: 'comic', name: 'Cartoon Style', color: '#F4D03F' },
   ]
 
   const lengths = [
-    { id: 'short', name: 'Short', pages: '8' },
-    { id: 'medium', name: 'Medium', pages: '12' },
-    { id: 'long', name: 'Long', pages: '16' },
+    { id: 8, name: 'Short', pages: '8' },
+    { id: 12, name: 'Medium', pages: '12' },
+    { id: 16, name: 'Long', pages: '16' },
   ]
 
   const handleCreateStory = async () => {
@@ -60,9 +61,12 @@ export default function StoryConfigurePage() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans bg-[#FFF8F0]">
-      {/* Header */}
-      <div className="w-full pt-8">
+    <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans bg-[#FFF8F0] relative">
+      {/* Home Button */}
+      <HomeButton />
+      
+      {/* Header - mit korrektem Abstand für HomeButton */}
+      <div className="w-full pt-16">
         <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50]">
           Choose the look & feel.
         </h2>
@@ -127,7 +131,7 @@ export default function StoryConfigurePage() {
       <div className="w-full pb-8">
         <button
           onClick={handleCreateStory}
-          className="w-full h-[56px] rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base shadow-[0px_4px_12px_rgba(255,138,101,0.3)] flex items-center justify-center gap-2 transition-transform hover:scale-105"
+          className="w-full h-[56px] rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F1948A] text-white font-['Poppins'] font-medium text-base shadow-[0px_4px_12px_rgba(255,138,101,0.3)] flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
         >
           <Sparkles size={20}/> Create Story
         </button>

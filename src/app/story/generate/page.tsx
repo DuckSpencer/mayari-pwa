@@ -6,12 +6,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Star, PenTool } from 'lucide-react'
+import { HomeButton } from '@/components/HomeButton'
 
 interface GenerationConfig {
   input: string
   mode: 'realistic' | 'fantasy'
-  style: string
-  length: string
+  style: 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic'
+  length: 8 | 12 | 16
 }
 
 export default function StoryGeneratePage() {
@@ -21,8 +22,8 @@ export default function StoryGeneratePage() {
   const [config, setConfig] = useState<GenerationConfig>({
     input: '',
     mode: 'fantasy',
-    style: 'style1',
-    length: 'medium'
+    style: 'watercolor',
+    length: 12
   })
   
   const [isGenerating, setIsGenerating] = useState(true)
@@ -37,8 +38,8 @@ export default function StoryGeneratePage() {
     startedRef.current = true
     const input = searchParams.get('input') || ''
     const mode = (searchParams.get('mode') as 'realistic' | 'fantasy') || 'fantasy'
-    const style = searchParams.get('style') || 'style1'
-    const length = searchParams.get('length') || 'medium'
+    const style = (searchParams.get('style') as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic') || 'watercolor'
+    const length = parseInt(searchParams.get('length') || '12') as 8 | 12 | 16
     
     setConfig({ input, mode, style, length })
     
@@ -74,8 +75,8 @@ export default function StoryGeneratePage() {
           userInput: config.input,
           storyContext: {
             storyType: config.mode,
-            theme: config.style,
-            length: config.length
+            artStyle: config.style,
+            pageCount: config.length
           }
         }),
       })
@@ -137,11 +138,18 @@ export default function StoryGeneratePage() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-10 text-center font-sans bg-[#FFF8F0] overflow-hidden">
-      {/* Animated Elements */}
-      <div className="relative w-48 h-48">
-        <Star className="text-[#F4D03F] w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 animate-draw-star" />
-        <PenTool size={48} className="text-[#7B9AE0] absolute animate-draw-pen" />
+    <div className="w-full h-full flex flex-col justify-between p-6 text-[#2C3E50] font-sans bg-[#FFF8F0] relative">
+      {/* Home Button */}
+      <HomeButton />
+      
+      {/* Header - mit korrektem Abstand für HomeButton */}
+      <div className="w-full pt-16 text-center">
+        <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50] mb-4">
+          Creating Your Story
+        </h2>
+        <p className="text-base font-['Poppins'] text-[#95A5A6]">
+          The AI is working its magic...
+        </p>
       </div>
 
       {/* Progress Bar */}

@@ -40,7 +40,7 @@ export default function HomePage() {
         
         <Link 
           href="/stories" 
-          className="w-full h-[48px] rounded-full bg-secondary-cream text-primary-navy border-2 border-primary-blue font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-105"
+          className="w-full h-[48px] rounded-full bg-secondary-cream text-primary-navy border-2 border-primary-blue font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
         >
           <Library size={20} />
           My Stories
