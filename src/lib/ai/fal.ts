@@ -16,6 +16,9 @@ export interface FalImageRequest {
   output_format?: 'jpeg' | 'png';
   acceleration?: 'none' | 'regular' | 'high';
   aspect_ratio?: '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
+  // kontext-specific
+  safety_tolerance?: '1' | '2' | '3' | '4' | '5' | '6';
+  enhance_prompt?: boolean;
 }
 
 export interface FalImageResponse {
@@ -38,7 +41,7 @@ export interface FalError {
 // fal.ai Client for Image Generation
 export class FalClient {
   private apiKey: string;
-  private modelId: string = process.env.FAL_MODEL_ID || 'fal-ai/flux/schnell';
+  private modelId: string = process.env.FAL_MODEL_ID || 'fal-ai/flux-pro/kontext/text-to-image';
 
   constructor() {
     const apiKey = process.env.FAL_KEY;
@@ -61,16 +64,14 @@ export class FalClient {
       console.log('Generating fal.ai image with payload:', {
         prompt: request.prompt,
         model: this.modelId,
-        image_size: request.image_size ?? 'square_hd',
-        num_inference_steps: request.num_inference_steps ?? 4,
-        guidance_scale: request.guidance_scale ?? 3.5,
-        acceleration: request.acceleration ?? 'none',
         aspect_ratio: request.aspect_ratio ?? '4:3',
+        guidance_scale: request.guidance_scale ?? 3.5,
       });
 
       // Normalize and prepare the request payload based on model (avoid invalid fields)
       let payload: any;
       const isImagen4 = this.modelId.startsWith('fal-ai/imagen4');
+      const isFluxKontext = this.modelId.includes('flux-pro/kontext');
       if (isImagen4) {
         payload = {
           prompt: request.prompt,
@@ -79,6 +80,21 @@ export class FalClient {
           num_images: request.num_images ?? 1,
         };
         if (typeof request.seed === 'number') payload.seed = request.seed
+      } else if (isFluxKontext) {
+        // FLUX.1 Kontext text-to-image supports: prompt, seed, guidance_scale, sync_mode, num_images,
+        // output_format, safety_tolerance, aspect_ratio, enhance_prompt
+        payload = {
+          prompt: request.prompt,
+          guidance_scale: request.guidance_scale ?? 3.5,
+          num_images: request.num_images ?? 1,
+          output_format: request.output_format ?? 'jpeg',
+          safety_tolerance: request.safety_tolerance ?? '2',
+          aspect_ratio: request.aspect_ratio ?? '4:3',
+        };
+        if (typeof request.seed === 'number') payload.seed = request.seed
+        if (typeof request.sync_mode === 'boolean') payload.sync_mode = request.sync_mode
+        if (typeof request.enhance_prompt === 'boolean') payload.enhance_prompt = request.enhance_prompt
+        // Do not include: negative_prompt, image_size, num_inference_steps, enable_safety_checker, acceleration
       } else {
         payload = {
           prompt: request.prompt,
