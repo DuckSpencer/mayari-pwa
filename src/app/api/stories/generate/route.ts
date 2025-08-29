@@ -189,10 +189,13 @@ export async function POST(request: NextRequest) {
         const negative = negatives
         const resp = await falClient.generateImages({
           prompt,
-          // kontext endpoint: use aspect_ratio and omit negative_prompt/image_size/num_inference_steps
-          aspect_ratio: '4:3',
+          negative_prompt: negative,
+          // Use FLUX image_size to really enforce 4:3 instead of square
+          image_size: 'landscape_4_3',
+          num_inference_steps: 10,
           guidance_scale: 4.5,
           output_format: 'jpeg',
+          enable_safety_checker: true,
           num_images: 1,
           // lock seed per story to preserve identity across pages
           seed,

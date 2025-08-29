@@ -32,12 +32,14 @@ class FalProvider implements ImageProvider {
     try {
       const falRequest: FalImageRequest = {
         prompt: request.prompt,
-        aspect_ratio: '4:3',
+        image_size: 'square_hd', // Use official documented size
+        num_inference_steps: 4, // Fast generation
         guidance_scale: 3.5,
-        sync_mode: false,
-        num_images: 1,
+        sync_mode: false, // Use async mode as per official docs
+        num_images: 1, // Always generate 1 image
+        enable_safety_checker: true,
         output_format: 'jpeg',
-        safety_tolerance: '2',
+        acceleration: 'regular',
       };
 
       const result = await falClient.generateImages(falRequest);
