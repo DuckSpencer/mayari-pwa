@@ -51,25 +51,25 @@ export async function POST(request: NextRequest) {
     if (userId && storyId) {
       try {
         const supabase = await createServerSupabaseClient()
-        
-        // Get current story content
-        const { data: currentStory, error: fetchError } = await supabase
+
+        // Fetch current text_content array
+        const { data: current, error: fetchError } = await supabase
           .from('stories')
-          .select('content')
+          .select('text_content')
           .eq('id', storyId)
           .eq('user_id', userId)
           .single()
 
         if (fetchError) {
           console.error('Error fetching current story:', fetchError)
-        } else if (currentStory) {
-          // Update story with new content
-          const updatedContent = currentStory.content + '\n\n' + continuedStory
-          
+        } else {
+          const prevPages = Array.isArray(current?.text_content) ? current!.text_content : []
+          const nextPages = [...prevPages, continuedStory]
+
           const { error: updateError } = await supabase
             .from('stories')
             .update({ 
-              content: updatedContent,
+              text_content: nextPages,
               updated_at: new Date().toISOString()
             })
             .eq('id', storyId)

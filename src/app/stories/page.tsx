@@ -93,11 +93,7 @@ export default function StoriesPage() {
   }
 
   const handleStoryClick = (story: SavedStory) => {
-    const params = new URLSearchParams({
-      story: story.text_content.join('\n\n'),
-      images: JSON.stringify(story.image_urls)
-    })
-    router.push(`/story/read?${params.toString()}`)
+    router.push(`/story/read?id=${encodeURIComponent(story.id)}`)
   }
 
   const handleDeleteStory = async (storyId: string) => {

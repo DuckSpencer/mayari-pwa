@@ -20,13 +20,35 @@ export default function StoryReadPage() {
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
+
+    const id = searchParams.get('id')
+    if (id) {
+      // Fetch from API by id
+      fetch(`/api/stories/${id}`)
+        .then(async (res) => {
+          if (!res.ok) throw new Error('Failed to load story')
+          const json = await res.json()
+          const data = json?.data
+          const texts: string[] = Array.isArray(data?.text_content) ? data.text_content : []
+          const imgs: string[] = Array.isArray(data?.image_urls) ? data.image_urls : []
+          setImages(imgs)
+          setStory(texts.join('\n\n'))
+          setStoryPages(texts.length > 0 ? texts : [])
+        })
+        .catch(() => {
+          // Fallback to empty view
+          setStory('')
+          setStoryPages([])
+          setImages([])
+        })
+      return
+    }
+
+    // Legacy: read from query params
     const storyText = searchParams.get('story') || ''
     const storyImages = searchParams.get('images') ? JSON.parse(searchParams.get('images')!) : []
-    
     setStory(storyText)
     setImages(storyImages)
-    
-    // Split story into pages (simplified - in real app you'd have proper pagination)
     const pages = storyText.split('\n\n').filter(page => page.trim().length > 0)
     setStoryPages(pages.length > 0 ? pages : [storyText])
   }, [searchParams])
