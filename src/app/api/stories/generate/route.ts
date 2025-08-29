@@ -49,13 +49,26 @@ export async function POST(request: NextRequest) {
 
     // Determine page count and style
     const pageCount = (storyContext.pageCount as number) || 8
-    // Accept both artStyle and theme from client and normalize to our union type
-    const requestedStyle = (storyContext.artStyle || (storyContext as any).theme || 'watercolor') as
-      | 'peppa-pig'
-      | 'pixi-book'
-      | 'watercolor'
-      | 'comic'
-    const artStyle = requestedStyle
+    // Accept both artStyle and theme from client; map UI synonyms to supported union
+    const artStyleRaw = ((storyContext as any).artStyle || (storyContext as any).theme || 'pixi-book') as string
+    const artStyle: 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic' = (() => {
+      switch ((artStyleRaw || '').toLowerCase()) {
+        case 'peppa-pig':
+          return 'peppa-pig'
+        case 'pixi-book':
+          return 'pixi-book'
+        case 'comic':
+          return 'comic'
+        case 'cartoon':
+          return 'comic'
+        case 'ghibli':
+          return 'pixi-book'
+        case 'watercolor':
+          return 'watercolor'
+        default:
+          return 'pixi-book'
+      }
+    })()
     const storyType = storyContext.storyType === 'realistic' ? 'realistic' : 'fantasy'
 
     // Generate paginated story using OpenRouter (structured JSON)
