@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Sparkles, Feather } from 'lucide-react'
+import { Sparkles, Feather, Palette, Paintbrush, Mountain, Zap } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
 
 interface StoryConfig {
@@ -38,10 +38,10 @@ export default function StoryConfigurePage() {
   }, [searchParams])
 
   const styles = [
-    { id: 'peppa-pig', name: 'Peppa Pig Style', color: '#F1948A' },
-    { id: 'pixi-book', name: 'Pixi-Buch Style', color: '#A8E6CF' },
-    { id: 'watercolor', name: 'Ghibli Style', color: '#7B9AE0' },
-    { id: 'comic', name: 'Cartoon Style', color: '#F4D03F' },
+    { id: 'peppa-pig', name: 'Peppa Pig Style', color: '#F1948A', icon: Palette },
+    { id: 'pixi-book', name: 'Pixiebook Style', color: '#4CAF50', icon: Paintbrush },
+    { id: 'watercolor', name: 'Ghibli Style', color: '#5DADE2', icon: Mountain },
+    { id: 'comic', name: 'Cartoon Style', color: '#FF9800', icon: Zap },
   ]
 
   const lengths = [
@@ -65,37 +65,36 @@ export default function StoryConfigurePage() {
       {/* Home Button */}
       <HomeButton />
       
-      {/* Header - mit korrektem Abstand für HomeButton */}
-      <div className="w-full pt-16">
-        <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50]">
+      {/* Header - zentriert und einheitlich wie auf anderen Seiten */}
+      <div className="w-full pt-16 text-center">
+        <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50] mb-2">
           Choose the look & feel.
         </h2>
-        <p className="text-base font-['Poppins'] text-[#95A5A6] mt-2">
+        <p className="text-base font-['Poppins'] text-[#95A5A6]">
           How should the illustrations appear?
         </p>
       </div>
 
       {/* Main Content */}
       <div className="w-full flex-grow flex flex-col justify-center gap-8">
-        {/* Visual Style Selection */}
+        {/* Visual Style Selection - Höhere Kärtchen mit blauer Umrandung */}
         <div>
           <h3 className="font-['Poppins'] font-semibold text-lg mb-3">Visual Style</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {styles.map(style => (
               <button
                 key={style.id}
                 onClick={() => setConfig(prev => ({ ...prev, style: style.id }))}
-                className={`flex-shrink-0 w-32 h-40 rounded-2xl p-3 border-2 flex flex-col justify-end transition-all duration-300 ${
-                  config.style === style.id 
-                    ? 'border-[#F4D03F]' 
-                    : 'border-transparent'
-                }`}
-                style={{ backgroundColor: style.color }}
+                className={`w-full h-48 rounded-2xl p-3 border-2 border-transparent flex flex-col justify-end transition-all duration-300 focus:outline-none focus:ring-0`}
+                style={{ 
+                  backgroundColor: config.style === style.id ? style.color : 
+                    (config.style ? '#95A5A6' : style.color)
+                }}
               >
                 <div className="w-full h-full rounded-xl bg-white/30 mb-2 flex items-center justify-center">
-                  <Feather size={32} className="text-white"/>
+                  <style.icon size={32} className="text-white"/>
                 </div>
-                <span className="font-['Poppins'] text-xs font-medium text-white">
+                <span className="font-['Poppins'] text-sm font-medium text-white text-center">
                   {style.name}
                 </span>
               </button>
@@ -103,15 +102,15 @@ export default function StoryConfigurePage() {
           </div>
         </div>
 
-        {/* Story Length Selection */}
+        {/* Story Length Selection - Gleiche Höhe wie Visual Style */}
         <div>
           <h3 className="font-['Poppins'] font-semibold text-lg mb-3">Story Length</h3>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {lengths.map(length => (
               <button
                 key={length.id}
                 onClick={() => setConfig(prev => ({ ...prev, length: length.id }))}
-                className={`w-1/3 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 ${
+                className={`w-full h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 ${
                   config.length === length.id 
                     ? 'bg-[#F7F1E8] border-2 border-[#7B9AE0]' 
                     : 'bg-[#F7F1E8]'

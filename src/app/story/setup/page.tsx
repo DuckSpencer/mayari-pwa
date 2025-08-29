@@ -32,12 +32,12 @@ export default function StorySetupPage() {
           : 'bg-gradient-to-br from-[#BB8FCE]/20 to-[#FFF8F0]'
       }`}></div>
 
-      {/* Header - mit korrektem Abstand für HomeButton */}
-      <div className="w-full pt-16">
-        <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50]">
+      {/* Header - zentriert und einheitlich wie auf anderen Seiten */}
+      <div className="w-full pt-16 text-center">
+        <h2 className="text-3xl/tight font-semibold font-['Poppins'] text-[#2C3E50] mb-2">
           What should your story be about?
         </h2>
-        <p className="text-base font-['Poppins'] text-[#95A5A6] mt-2">
+        <p className="text-base font-['Poppins'] text-[#95A5A6]">
           Ask a question or enter a topic.
         </p>
       </div>
@@ -56,16 +56,18 @@ export default function StorySetupPage() {
           }`}
         />
 
-        {/* Mode Toggle */}
+        {/* Mode Toggle - Komplett ohne blaue Umrandungen */}
         <div className="w-full">
-          <div className="relative w-full h-16 bg-[#F7F1E8] rounded-full p-2 flex items-center">
-            <div className={`absolute top-1 left-1 w-[calc(50%-4px)] h-14 rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
+          <div className="relative w-full h-16 bg-[#F7F1E8] rounded-full p-2 flex items-center focus-within:outline-none focus-within:ring-0">
+            {/* Weißer Schieberegler - ohne Border */}
+            <div className={`absolute top-1 left-1 w-[calc(50%-4px)] h-14 rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out border-0 outline-none ${
               mode === 'fantasy' ? 'translate-x-full' : 'translate-x-0'
             }`}></div>
             
+            {/* Buttons ohne jegliche Umrandungen */}
             <button 
               onClick={() => setMode('realistic')} 
-              className="w-1/2 h-full rounded-full z-10 flex items-center justify-center gap-2 font-['Poppins'] font-medium transition-colors"
+              className="w-1/2 h-full rounded-full z-10 flex items-center justify-center gap-2 font-['Poppins'] font-medium transition-colors hover:no-underline focus:outline-none focus:ring-0 focus:border-0 active:outline-none active:ring-0"
               style={{ color: mode === 'realistic' ? '#5DADE2' : '#95A5A6' }}
             >
               <Lightbulb size={20}/> Realistic
@@ -73,7 +75,7 @@ export default function StorySetupPage() {
             
             <button 
               onClick={() => setMode('fantasy')} 
-              className="w-1/2 h-full rounded-full z-10 flex items-center justify-center gap-2 font-['Poppins'] font-medium transition-colors"
+              className="w-1/2 h-full rounded-full z-10 flex items-center justify-center gap-2 font-['Poppins'] font-medium transition-colors hover:no-underline focus:outline-none focus:ring-0 focus:border-0 active:outline-none active:ring-0"
               style={{ color: mode === 'fantasy' ? '#BB8FCE' : '#95A5A6' }}
             >
               <Wand2 size={20}/> Fantasy

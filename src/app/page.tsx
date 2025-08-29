@@ -6,9 +6,11 @@ export default function HomePage() {
   return (
     <div className="w-full h-full flex flex-col items-center justify-between p-6 text-primary-navy font-sans bg-primary-warm">
       {/* Header */}
-      <div className="w-full flex justify-between items-center pt-4">
+      <div className="w-full flex justify-center items-center pt-4 relative">
         <h1 className="font-['Poppins'] text-3xl font-bold text-primary-navy">Mayari</h1>
-        <UserButton />
+        <div className="absolute right-0">
+          <UserButton />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -32,7 +34,7 @@ export default function HomePage() {
       <div className="w-full flex flex-col gap-4 pb-8">
         <Link 
           href="/story/setup" 
-          className="w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-['Poppins'] font-medium text-base shadow-button-primary flex items-center justify-center gap-2 transition-transform hover:scale-105"
+          className="w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-['Poppins'] font-medium text-base shadow-button-primary flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
         >
           <PlusCircle size={20} />
           New Story
