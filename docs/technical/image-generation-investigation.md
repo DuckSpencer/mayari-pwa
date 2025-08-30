@@ -1,6 +1,6 @@
 # Image Generation Investigation – Current State, Findings, and Next Steps
 
-Status: working draft – updated after latest “shopping with mom” run
+Status: working draft – updated after latest runs (rollback from FLUX Kontext to FLUX.1 schnell)
 
 ## 1) Scope and Goal
 
@@ -11,7 +11,9 @@ Target outcome: consistent characters across pages, matching each page’s scene
 ## 2) Current Pipeline (high level)
 
 - Text model (OpenRouter): currently `anthropic/claude-sonnet-4` for paged story JSON and auxiliary planners.
-- Image model (FAL): `fal-ai/flux/schnell` (FLUX.1 [schnell]).
+- Image model (FAL): `fal-ai/flux/schnell` (FLUX.1 [schnell]) – current default.
+  - Short experiment (2025‑08): `fal-ai/flux-pro/kontext/text-to-image` (Kontext [pro])
+    - Outcome: better prompt following/typography suppression in T1, but identity still drifted and cost per 8pp story ~ $0.24. We rolled back to `schnell` (quality/cost trade‑off not acceptable yet).
 - Relevant code paths:
   - Story generation endpoint: `src/app/api/stories/generate/route.ts`
   - OpenRouter client: `src/lib/ai/openrouter.ts`
@@ -22,6 +24,11 @@ Processing steps today:
 2. Extract summary + character sheet; extract recurring cast list (names, attributes).
 3. Plan visuals per page (shot/camera/time_of_day/lighting/environment; include_characters flag).
 4. Build image prompt per page and call FAL (Flux.1 schnell) to generate one image per page.
+   - Prompt hardening (2025‑08):
+     - Per‑page visibility rules: “EXACTLY N people visible …” bzw. “show only [subjects]; no other people visible.”
+     - Bilinguale domänenspezifische Verbote (Shop: no price tags/signage/labels/sale signs/printed packaging text; „keine Preisschilder/Regaletiketten/…“).
+     - Identity‑Ankerzeile (kurz) direkt nach Scene.
+     - Fixed seed per story; aspect ratio 4:3; guidance_scale aktuell 4.0 (zuvor 4.5).
 5. Save results and show in reader.
 
 ## 3) Problems Observed (from multiple sessions)
@@ -55,9 +62,9 @@ Highlights (trimmed for readability):
 - Model payload shows: `image_size: 'landscape_4_3', num_inference_steps: 10, guidance_scale: 4.5, seed=<fixed per story>`
 - Strong negatives include: “no speech bubbles, no talk balloons, no printed text, … no signatures, no names (including "Mara") … no butterflies/birds/insects”.
 
-What improved in this run:
+What improved in recent runs:
 - Images are no longer identical; there is real variety per page (wide/medium/detail/closeup).
-- Text overlays are largely gone (no big banners of random glyphs); still occasional signage‑like elements or subtle labels.
+- Text overlays reduced vs. baseline; große Banner selten. In Shops weiterhin gelegentlich signage/labels (deutlich weniger, aber nicht null).
 - Scene instructions appear at top of prompt (less truncation risk).
 
 What’s still wrong:
@@ -92,6 +99,12 @@ What’s still wrong:
 8) Stronger negatives (names/signatures/logos)
 - Many overlays gone; occasional signage or labeled bag still occurs.
 
+9) Per‑page visibility rules (2025‑08)
+- “EXACTLY N people visible …; no background people/partial figures” bzw. “show only [subject] …” → merklich weniger unbeabsichtigte Personen; nicht vollständig.
+
+10) Model spike: FLUX.1 Kontext [pro] (2025‑08)
+- Pros: gute Prompt‑Adhärenz/Typografie, aber Identität weiter nicht stabil genug; Kosten ~ $0.24 pro 8 Bilder; Rollback zu `schnell`.
+
 ## 6) Root-Cause Hypotheses
 
 H1. Character sheet and cast list introduce extra actors
@@ -113,8 +126,9 @@ H5. “include_characters=false” insufficiently explicit
 
 - Deterministic stories (fixed seed per story) and 4:3 output.
 - Prompt structure: Scene/Visual first, then directives.
-- Strong negatives (now including signatures/names) – text artifacts substantially reduced.
+- Strong negatives (inkl. bilinguale shop‑Verbote) – Textartefakte deutlich reduziert.
 - Real per‑page variety from visual planning.
+- Per‑page visibility rules reduzieren unbeabsichtigte Personen signifikant.
 
 ## 8) What’s Still Bad (prioritized)
 
@@ -122,6 +136,8 @@ P1. Extra, unintended people (cashier/worker) appear too often.
 P2. Occasional labels/signage (e.g., bag text) despite negatives.
 P3. Character identity still drifts across pages (hair/outfit/face details change).
 P4. Object‑only pages sometimes include people.
+
+P5. Universal requirement: Qualität muss über Kontexte (Shop, Park, Schule, Nacht, Innen/Außen, Nah/Fern) stabil bleiben – ohne dass man pro Story manuell kuratiert.
 
 ## 9) Non‑code Experiment Plan (next sessions)
 
@@ -160,6 +176,10 @@ E8. Reference‑image feasibility check (no code yet)
 - FLUX Kontext / IP‑Adapter‑like approaches (if accessible via provider) to truly lock identity.
 - If provider lacks it: consider a single neutral anchor image for main character (front view) and test image‑conditioning where available.
 
+E9. Style robustness (universal)
+- Compare styles available in UI (mapped): `peppa-pig`, `pixi-book` (incl. “ghibli”→`pixi-book`), `comic` (UI “cartoon”→`comic`).
+- Expect fewer text artifacts with `peppa-pig` vs. `pixi-book`/`comic`; identity may benefit slightly from flatter styles.
+
 ## 10) Acceptance Criteria & Metrics (manual first)
 
 - Text‑in‑image rate ≤ 5% pages.
@@ -172,6 +192,28 @@ E8. Reference‑image feasibility check (no code yet)
 - Provider constraints: whether FLUX negative prompts can fully suppress signage in store scenes.
 - Availability of reference‑image conditioning (Kontext) via fal.ai; might require different endpoint or provider.
 - Trade‑off between long prompts (more constraints) and adherence (model may ignore some items when prompt is too dense).
+
+## 12) Current Model & Configuration (2025‑08)
+
+- Model (default): `fal-ai/flux/schnell` (FLUX.1 schnell)
+  - aspect ratio: 4:3 (`image_size: landscape_4_3`)
+  - guidance_scale: 4.0 (vorher 4.5)
+  - num_inference_steps: 10 (Batch‑Bilder, 1 pro Seite)
+  - negative_prompt: harte Verbote inkl. zweisprachiger Shop‑Verbote
+  - seed: fixed per story
+  - per‑page: visibility rule (EXACTLY/ONLY), Identity‑Kurzanker, Visual‑Plan
+- Styles (UI→Backend Mapping):
+  - Peppa Pig Style → `peppa-pig`
+  - Pixiebook Style → `pixi-book`
+  - Ghibli Style → `pixi-book`
+  - Cartoon Style → `comic`
+- Tried & Reverted: `fal-ai/flux-pro/kontext/text-to-image` (Kontext [pro])
+  - Pros: gute Prompt‑Adhärenz/Typografie
+  - Cons: Identitätsdrift weiterhin sichtbar, Kosten ~ $0.24 pro 8 Seiten → nicht tragfähig für Universal‑Anforderung
+
+## 13) Universal Requirement – Guiding Principle
+
+The pipeline must perform consistently across arbitrary topics and scenes (indoor/outdoor, shop/park/school, day/night, few/many objects) without per‑story hand‑tuning. All recommendations and changes above are evaluated primarily on universal robustness (not cherry‑picked stories). Where specialized approaches (e.g., reference images) are considered, they must degrade gracefully when references are unavailable and keep cost/latency within target budgets.
 
 ## 12) Summary
 
