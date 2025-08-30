@@ -215,6 +215,14 @@ E9. Style robustness (universal)
 
 The pipeline must perform consistently across arbitrary topics and scenes (indoor/outdoor, shop/park/school, day/night, few/many objects) without per‑story hand‑tuning. All recommendations and changes above are evaluated primarily on universal robustness (not cherry‑picked stories). Where specialized approaches (e.g., reference images) are considered, they must degrade gracefully when references are unavailable and keep cost/latency within target budgets.
 
+## 14) Latest Outcome (2025‑08)
+
+- After switching back to `flux/schnell`, adding per‑page visibility rules, bilingual shop negatives, identity anchors and lowering CFG to 4.0, overall quality is still not universally satisfactory:
+  - Identity: noticeable drift across pages remains in multiple stories (hair/outfit/face vary with shot/lighting changes).
+  - Extra characters: reduced but not fully eliminated; occasional third child or background people still appear.
+  - Text in images: improved vs. baseline; signage/labels can still leak in shop‑like scenes.
+  - Conclusion: Current prompt‑only approach improves but does not reach our universal bar; further work needed (style A/B, stricter scene sanitization, planner gating for side characters, or reference‑based consistency if cost allows).
+
 ## 12) Summary
 
 We fixed repetition and reduced typography artifacts, but still fight three issues: unintended extra people, occasional labels/names, and residual identity drift. The likely root causes are permissive cast lists, environment priors (shops → signage), and the limitations of prompt‑only identity locking. The next step is a controlled, no‑code A/B plan focusing on tighter cast scope, stronger subject‑only wording, bilingual negatives, small parameter sweeps, and style anchor tightening. If needed, we will escalate to reference‑based identity locking (Kontext‑style) after validating prompt‑only ceilings.
