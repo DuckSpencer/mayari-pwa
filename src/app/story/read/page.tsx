@@ -163,8 +163,8 @@ export default function StoryReadPage() {
       </div>
 
       {/* SEPARATER TEXT-BEREICH - ÜBER DER NAVIGATION */}
-      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 px-6 py-5 sm:px-12 sm:py-6 bg-black/35 backdrop-blur-md rounded-full border border-white/30 w-[calc(100%-2rem)] sm:w-auto sm:max-w-2xl lg:max-w-3xl shadow-lg">
-        <p className="font-['Georgia'] text-lg sm:text-xl/relaxed text-white font-medium text-center break-words leading-tight" style={{
+      <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 px-6 py-6 sm:px-12 sm:py-7 bg-black/45 backdrop-blur-md rounded-2xl border border-white/40 w-[calc(100%-2rem)] sm:w-auto max-w-[min(720px,calc(100%-2rem))] shadow-xl">
+        <p className="font-['Georgia'] text-base sm:text-lg/relaxed md:text-xl/relaxed text-white font-medium text-center break-words leading-relaxed" style={{
           textShadow: '0 1px 4px rgba(0,0,0,0.8)'
         }}>
           {currentStoryPage}
