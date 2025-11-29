@@ -1,5 +1,5 @@
 // src/lib/ai/image-service.ts
-import { falClient, FalImageRequest, FalImageResponse } from './fal';
+import { falClient, FalImageRequest, FalTimings } from './fal';
 
 // Unified image request interface
 export interface ImageRequest {
@@ -10,13 +10,20 @@ export interface ImageRequest {
   numImages?: number;
 }
 
+// Metadata from image generation
+export interface ImageMetadata {
+  seed?: number;
+  timings?: FalTimings;
+  has_nsfw_concepts?: boolean[];
+}
+
 // Unified image response interface
 export interface ImageResponse {
   success: boolean;
   images?: string[];
   error?: string;
   provider?: 'fal' | 'flux';
-  metadata?: any;
+  metadata?: ImageMetadata;
 }
 
 // Provider interface for abstraction
@@ -55,10 +62,11 @@ class FalProvider implements ImageProvider {
           has_nsfw_concepts: result.has_nsfw_concepts,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       return {
         success: false,
-        error: `fal.ai error: ${error.message}`,
+        error: `fal.ai error: ${err.message || 'Unknown error'}`,
         provider: 'fal',
       };
     }
@@ -136,17 +144,18 @@ export class ImageService {
         provider: 'fal',
       };
       
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string; stack?: string; name?: string; code?: string };
       console.error('ImageService: fal.ai EXCEPTION:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        code: error.code
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+        code: err.code
       });
-      
+
       return {
         success: false,
-        error: `fal.ai error: ${error.message}`,
+        error: `fal.ai error: ${err.message || 'Unknown error'}`,
         provider: 'fal',
       };
     }

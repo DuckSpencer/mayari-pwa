@@ -43,6 +43,23 @@ export interface OpenRouterError {
   }
 }
 
+// Internal types for parsed responses
+interface VisualPlanItem {
+  include_characters?: boolean
+  subjects?: string
+  shot?: string
+  camera?: string
+  environment?: string
+  time_of_day?: string
+  lighting?: string
+}
+
+interface CastCharacter {
+  name?: string
+  role?: string
+  attributes?: string
+}
+
 class OpenRouterClient {
   private apiKey: string | undefined
   private baseUrl = 'https://openrouter.ai/api/v1'
@@ -300,18 +317,26 @@ Rules (structure):
         { role: 'user', content: user.slice(0, 4000) }
       ], { temperature: 0.5, max_tokens: 900 })
       const raw = resp.choices[0]?.message?.content ?? ''
-      const parsed = JSON.parse(raw.trim()) as { pages?: any[] }
+      const parsed = JSON.parse(raw.trim()) as { pages?: VisualPlanItem[] }
       const pages = Array.isArray(parsed.pages) ? parsed.pages : []
       // Normalize length
+      const validShots = ['wide', 'medium', 'closeup', 'detail'] as const
+      const validCameras = ['eye-level', 'low', 'high'] as const
+      const validTimes = ['day', 'sunset', 'night', 'dawn'] as const
+
       return paged.pages.map((_, i) => {
         const item = pages[i] || {}
+        const shotStr = item.shot || ''
+        const cameraStr = item.camera || ''
+        const timeStr = item.time_of_day || ''
+
         return {
           include_characters: Boolean(item.include_characters),
           subjects: (item.subjects || '').toString().slice(0, 80) || 'main characters',
-          shot: ['wide','medium','closeup','detail'].includes(item.shot) ? item.shot : 'medium',
-          camera: ['eye-level','low','high'].includes(item.camera) ? item.camera : 'eye-level',
+          shot: validShots.includes(shotStr as typeof validShots[number]) ? shotStr as typeof validShots[number] : 'medium',
+          camera: validCameras.includes(cameraStr as typeof validCameras[number]) ? cameraStr as typeof validCameras[number] : 'eye-level',
           environment: (item.environment || '').toString().slice(0, 60),
-          time_of_day: ['day','sunset','night','dawn'].includes(item.time_of_day) ? item.time_of_day : 'day',
+          time_of_day: validTimes.includes(timeStr as typeof validTimes[number]) ? timeStr as typeof validTimes[number] : 'day',
           lighting: (item.lighting || '').toString().slice(0, 60) || 'soft natural light',
         }
       })
@@ -346,14 +371,21 @@ Rules (structure):
         { role: 'user', content: user.slice(0, 3500) }
       ], { temperature: 0.4, max_tokens: 500 })
       const raw = resp.choices[0]?.message?.content ?? ''
-      const parsed = JSON.parse(raw.trim()) as { characters?: Array<{ name?: string; role?: string; attributes?: string }> }
+      const parsed = JSON.parse(raw.trim()) as { characters?: CastCharacter[] }
       const list = Array.isArray(parsed.characters) ? parsed.characters : []
+      const validRoles = ['child', 'adult', 'other'] as const
       return list
-        .map(c => ({
-          name: (c.name || '').toString().slice(0, 40),
-          role: (['child','adult','other'].includes((c.role || '') as any) ? c.role : 'other') as 'child' | 'adult' | 'other',
-          attributes: (c.attributes || '').toString().slice(0, 120)
-        }))
+        .map(c => {
+          const roleStr = (c.role || '').toString()
+          const role: 'child' | 'adult' | 'other' = validRoles.includes(roleStr as 'child' | 'adult' | 'other')
+            ? roleStr as 'child' | 'adult' | 'other'
+            : 'other'
+          return {
+            name: (c.name || '').toString().slice(0, 40),
+            role,
+            attributes: (c.attributes || '').toString().slice(0, 120)
+          }
+        })
         .filter(c => c.name)
         .slice(0, 4)
     } catch {
