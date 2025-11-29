@@ -1,12 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     remotePatterns: [
+      // FAL AI image generation service
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.fal.ai",
+      },
+      {
+        protocol: "https",
+        hostname: "fal.media",
+      },
+      {
+        protocol: "https",
+        hostname: "v3.fal.media",
+      },
+      // Supabase storage
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
       },
     ],
   },

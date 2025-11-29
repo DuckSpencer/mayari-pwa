@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { openRouterClient } from '@/lib/ai/openrouter'
 import { falClient } from '@/lib/ai/fal'
 import { createServerSupabaseClient } from '@/lib/supabase'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import type { Database } from '@/types/database'
 
 export interface GenerateStoryRequest {
@@ -17,8 +18,6 @@ export interface GenerateStoryRequest {
     artStyle?: 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic'
     pageCount?: 8 | 12 | 16
   }
-  // userId is ignored; we derive user from Supabase session
-  userId?: string
 }
 
 export interface GenerateStoryResponse {
@@ -35,14 +34,43 @@ export interface GenerateStoryResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check - require logged-in user
+    const supabase = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required. Please log in.' },
+        { status: 401 }
+      )
+    }
+
+    // Rate limiting check - story generation is expensive
+    const rateLimit = checkRateLimit(user.id, 'story-generation', RATE_LIMITS.storyGeneration)
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+      return NextResponse.json(
+        { success: false, error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter), 'X-RateLimit-Remaining': '0' } }
+      )
+    }
+
     // Parse request body
     const body: GenerateStoryRequest = await request.json()
     const { userInput, storyContext = {} } = body
 
-    // Validate input
+    // Validate input - check for presence
     if (!userInput || userInput.trim().length === 0) {
       return NextResponse.json(
         { success: false, error: 'User input is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate input - check maximum length to prevent abuse
+    if (userInput.length > 2000) {
+      return NextResponse.json(
+        { success: false, error: 'Input too long. Maximum 2000 characters allowed.' },
         { status: 400 }
       )
     }
@@ -225,7 +253,6 @@ export async function POST(request: NextRequest) {
     }
     const tasks = text_content.map((txt, i) => async () => {
       let prompt = makePrompt(txt, i)
-      console.log(`[images] Page ${i + 1}/${pageCount} seed=${seed} prompt=\n${prompt}`)
       const maxRetries = 2
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         const negative = negatives
@@ -270,28 +297,24 @@ export async function POST(request: NextRequest) {
       console.warn('Could not get usage statistics:', error)
     }
 
-    // Save story to database if user is authenticated (cookie/session based)
+    // Save story to database for the authenticated user
     let saved = false
     try {
-      const supabase = await createServerSupabaseClient()
-      const { data: authData, error: authError } = await supabase.auth.getUser()
-      if (!authError && authData?.user?.id) {
-        const insertPayload: Database['public']['Tables']['stories']['Insert'] = {
-          user_id: authData.user.id,
-          text_content,
-          image_urls,
-          prompt: userInput,
-          story_type: storyType as 'realistic' | 'fantasy',
-          art_style: artStyle as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic',
-          page_count: pageCount as 8 | 12 | 16,
-          created_at: new Date().toISOString(),
-        }
-        const { error: dbError } = await supabase
-          .from('stories')
-          .insert(insertPayload)
-        if (!dbError) saved = true
-        else console.error('Database error:', dbError)
+      const insertPayload: Database['public']['Tables']['stories']['Insert'] = {
+        user_id: user.id,
+        text_content,
+        image_urls,
+        prompt: userInput,
+        story_type: storyType as 'realistic' | 'fantasy',
+        art_style: artStyle as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic',
+        page_count: pageCount as 8 | 12 | 16,
+        created_at: new Date().toISOString(),
       }
+      const { error: dbError } = await supabase
+        .from('stories')
+        .insert(insertPayload)
+      if (!dbError) saved = true
+      else console.error('Database error:', dbError)
     } catch (error) {
       console.error('Error saving story to database:', error)
     }
@@ -312,13 +335,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Story generation error:', error)
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    
+
+    // Don't expose internal error details to client
     return NextResponse.json(
-      { 
-        success: false, 
-        error: `Failed to generate story: ${errorMessage}` 
+      {
+        success: false,
+        error: 'Failed to generate story. Please try again later.'
       },
       { status: 500 }
     )
