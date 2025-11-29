@@ -21,12 +21,19 @@ export interface FalImageRequest {
   enhance_prompt?: boolean;
 }
 
+export interface FalTimings {
+  inference?: number;
+  queue?: number;
+  total?: number;
+  [key: string]: number | undefined;
+}
+
 export interface FalImageResponse {
   success: boolean;
   images?: string[];
   error?: string;
   seed?: number;
-  timings?: any;
+  timings?: FalTimings;
   has_nsfw_concepts?: boolean[];
 }
 
@@ -37,6 +44,49 @@ export interface FalError {
     'Retry-After'?: string;
   };
 }
+
+// Internal types for API responses
+interface FalImageObject {
+  url?: string;
+  data?: string;
+  content?: string;
+}
+
+interface FalApiResult {
+  images?: (string | FalImageObject)[];
+  image?: string;
+  data?: {
+    images?: FalImageObject[];
+  } | (string | FalImageObject)[];
+  seed?: number;
+  timings?: FalTimings;
+  has_nsfw_concepts?: boolean[];
+}
+
+// Payload types for different models
+interface FluxPayload {
+  prompt: string;
+  negative_prompt?: string;
+  image_size?: FalImageRequest['image_size'];
+  num_inference_steps?: number;
+  num_images?: number;
+  enable_safety_checker?: boolean;
+  output_format?: 'jpeg' | 'png';
+  guidance_scale?: number;
+  sync_mode?: boolean;
+  acceleration?: string;
+  seed?: number;
+}
+
+interface Imagen4Payload {
+  prompt: string;
+  negative_prompt?: string;
+  aspect_ratio?: string;
+  num_images?: number;
+  seed?: number;
+}
+
+type FalPayload = FluxPayload | Imagen4Payload;
 
 // fal.ai Client for Image Generation
 export class FalClient {
@@ -75,18 +125,19 @@ export class FalClient {
       });
 
       // Normalize and prepare the request payload based on model (avoid invalid fields)
-      let payload: any;
+      let payload: FalPayload;
       const isImagen4 = this.modelId.startsWith('fal-ai/imagen4');
       if (isImagen4) {
-        payload = {
+        const imagen4Payload: Imagen4Payload = {
           prompt: request.prompt,
           negative_prompt: request.negative_prompt || '',
           aspect_ratio: request.aspect_ratio || '4:3',
           num_images: request.num_images ?? 1,
         };
-        if (typeof request.seed === 'number') payload.seed = request.seed
+        if (typeof request.seed === 'number') imagen4Payload.seed = request.seed;
+        payload = imagen4Payload;
       } else {
-        payload = {
+        const fluxPayload: FluxPayload = {
           prompt: request.prompt,
           image_size: request.image_size ?? 'square_hd',
           num_inference_steps: request.num_inference_steps ?? 4,
@@ -94,11 +145,12 @@ export class FalClient {
           enable_safety_checker: request.enable_safety_checker !== false,
           output_format: request.output_format ?? 'jpeg',
         };
-        if (typeof request.negative_prompt === 'string') payload.negative_prompt = request.negative_prompt
-        if (typeof request.guidance_scale === 'number') payload.guidance_scale = request.guidance_scale
-        if (typeof request.sync_mode === 'boolean') payload.sync_mode = request.sync_mode
-        if (typeof request.acceleration === 'string') payload.acceleration = request.acceleration
-        if (typeof request.seed === 'number') payload.seed = request.seed
+        if (typeof request.negative_prompt === 'string') fluxPayload.negative_prompt = request.negative_prompt;
+        if (typeof request.guidance_scale === 'number') fluxPayload.guidance_scale = request.guidance_scale;
+        if (typeof request.sync_mode === 'boolean') fluxPayload.sync_mode = request.sync_mode;
+        if (typeof request.acceleration === 'string') fluxPayload.acceleration = request.acceleration;
+        if (typeof request.seed === 'number') fluxPayload.seed = request.seed;
+        payload = fluxPayload;
       }
 
       // Use fal.ai client with proper error handling
@@ -112,12 +164,13 @@ export class FalClient {
         has_nsfw_concepts: result.has_nsfw_concepts,
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { body?: unknown; message?: string };
       try {
-        if (error?.body) {
-          console.error('fal.ai error body:', JSON.stringify(error.body));
+        if (err?.body) {
+          console.error('fal.ai error body:', JSON.stringify(err.body));
         }
-      } catch {}
+      } catch { /* ignore JSON errors */ }
       console.error('fal.ai Image Generation Error:', error);
       return {
         success: false,
@@ -129,7 +182,7 @@ export class FalClient {
   /**
    * Make request with retry logic based on Perplexity research
    */
-  private async makeRequestWithRetry(payload: any, maxRetries: number = 3): Promise<any> {
+  private async makeRequestWithRetry(payload: FalPayload, maxRetries: number = 3): Promise<FalApiResult> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         console.log(`fal.ai request attempt ${attempt + 1}/${maxRetries}`);
@@ -145,20 +198,21 @@ export class FalClient {
         });
 
         console.log('fal.ai generation completed successfully');
-        return result;
+        return result as FalApiResult;
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string; status?: number; code?: string; stack?: string; headers?: Record<string, string> };
         console.error(`fal.ai request attempt ${attempt + 1} failed:`, error);
         console.error('Error details:', {
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          stack: error.stack
+          message: err.message,
+          status: err.status,
+          code: err.code,
+          stack: err.stack
         });
 
         // Check if retryable based on headers
-        if (error.headers && error.headers['X-Fal-Retryable'] === 'true') {
-          const retryAfter = error.headers['Retry-After'];
+        if (err.headers && err.headers['X-Fal-Retryable'] === 'true') {
+          const retryAfter = err.headers['Retry-After'];
           if (retryAfter) {
             const delay = parseInt(retryAfter, 10) * 1000;
             console.log(`Waiting ${delay}ms before retry (Retry-After header)`);
@@ -174,7 +228,7 @@ export class FalClient {
         }
 
         // For Docker/Node.js 18+ compatibility issues, retry with delay
-        if (error.message?.includes('fetch failed') || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        if (err.message?.includes('fetch failed') || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
           console.log('Docker/Node.js 18+ compatibility issue detected, retrying...');
           const delay = Math.pow(2, attempt) * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -187,7 +241,7 @@ export class FalClient {
         }
 
         // For rate limiting (429), use exponential backoff
-        if (error.status === 429) {
+        if (err.status === 429) {
           const jitter = Math.random() * 1000;
           const delay = Math.pow(2, attempt) * 1000 + jitter;
           console.log(`Rate limited. Waiting ${delay}ms before retry...`);
@@ -206,68 +260,68 @@ export class FalClient {
   /**
    * Format error message for better debugging
    */
-  private formatError(error: any): string {
-    if (error.detail && Array.isArray(error.detail)) {
-      return error.detail.join(', ');
+  private formatError(error: unknown): string {
+    const err = error as { detail?: string[]; message?: string };
+    if (err.detail && Array.isArray(err.detail)) {
+      return err.detail.join(', ');
     }
-    if (error.message) {
-      return error.message;
+    if (err.message) {
+      return err.message;
     }
     return 'Unknown fal.ai error';
   }
 
   /**
+   * Extract image URL from image object
+   */
+  private extractUrlFromImage(image: string | FalImageObject): string | null {
+    if (typeof image === 'string') return image;
+    if (image.url) return image.url;
+    if (image.data) return image.data;
+    if (image.content) return image.content;
+    return null;
+  }
+
+  /**
    * Extract image URLs from fal.ai response
    */
-  private extractImageUrls(result: any): string[] {
+  private extractImageUrls(result: FalApiResult): string[] {
     try {
       console.log('Extracting image URLs from result:', JSON.stringify(result, null, 2));
-      
+
       // Check if result has data with images (most common structure)
-      if (result.data && result.data.images && Array.isArray(result.data.images)) {
-        const urls = result.data.images.map((image: any) => {
-          // Handle both URL and Base64 formats
-          if (image.url) return image.url;
-          if (image.data) return image.data; // Base64
-          if (image.content) return image.content; // Base64 fallback
-          return null;
-        }).filter(Boolean);
+      if (result.data && typeof result.data === 'object' && 'images' in result.data && Array.isArray(result.data.images)) {
+        const urls = result.data.images
+          .map(image => this.extractUrlFromImage(image))
+          .filter((url): url is string => url !== null);
         console.log('Extracted URLs from data.images:', urls.length);
         return urls;
       }
-      
+
       // Check if result has images array with objects
       if (result.images && Array.isArray(result.images)) {
-        const urls = result.images.map((image: any) => {
-          if (typeof image === 'string') return image; // Direct string (URL or Base64)
-          if (image.url) return image.url;
-          if (image.data) return image.data; // Base64
-          if (image.content) return image.content; // Base64 fallback
-          return null;
-        }).filter(Boolean);
+        const urls = result.images
+          .map(image => this.extractUrlFromImage(image))
+          .filter((url): url is string => url !== null);
         console.log('Extracted URLs from images array:', urls.length);
         return urls;
       }
-      
+
       // Check if result has a single image
       if (result.image && typeof result.image === 'string') {
         console.log('Extracted single image:', result.image);
         return [result.image];
       }
-      
+
       // Check if result has data as direct array
       if (result.data && Array.isArray(result.data)) {
-        const urls = result.data.map((image: any) => {
-          if (typeof image === 'string') return image; // Direct string
-          if (image.url) return image.url;
-          if (image.data) return image.data; // Base64
-          if (image.content) return image.content; // Base64 fallback
-          return null;
-        }).filter(Boolean);
+        const urls = result.data
+          .map(image => this.extractUrlFromImage(image))
+          .filter((url): url is string => url !== null);
         console.log('Extracted URLs from data array:', urls.length);
         return urls;
       }
-      
+
       console.log('No images found in result');
       return [];
     } catch (error) {
@@ -352,12 +406,13 @@ export class FalClient {
         success: true,
         images: allImages,
       };
-      
-    } catch (error: any) {
+
+    } catch (error: unknown) {
       console.error('Error generating story scenes:', error);
+      const err = error as { message?: string };
       return {
         success: false,
-        error: error.message || 'Failed to generate story scenes',
+        error: err.message || 'Failed to generate story scenes',
       };
     }
   }

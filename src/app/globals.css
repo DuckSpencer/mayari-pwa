@@ -1,3 +1,7 @@
+/* Import Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@300;400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,95 +18,109 @@
   }
 }
 
+html {
+  font-family: 'Poppins', sans-serif;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
-/* Custom animations for story generation */
-@keyframes draw-pen {
-  0% { top: 0%; left: 100%; transform: rotate(0deg); }
-  20% { top: 40%; left: 60%; transform: rotate(-45deg); }
-  40% { top: 60%; left: 20%; transform: rotate(10deg); }
-  60% { top: 50%; left: 70%; transform: rotate(-25deg); }
-  80% { top: 30%; left: 30%; transform: rotate(20deg); }
-  100% { top: 0%; left: 100%; transform: rotate(0deg); }
+/* ================================
+   COMPONENT CLASSES
+   ================================ */
+
+@layer components {
+  /* Primary Button - Coral gradient */
+  .btn-primary {
+    @apply w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02];
+    box-shadow: 0px 4px 12px rgba(255, 138, 101, 0.3);
+  }
+
+  /* Secondary Button - Cream with border */
+  .btn-secondary {
+    @apply w-full h-[48px] rounded-full bg-secondary-cream border-2 border-primary-blue text-primary-navy font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02];
+  }
+
+  /* Magic Button - Blue/Lavender gradient */
+  .btn-magic {
+    @apply w-full h-[56px] rounded-full bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02];
+    box-shadow: 0px 6px 16px rgba(123, 154, 224, 0.4);
+  }
+
+  /* Small action button (for cards) */
+  .btn-action-sm {
+    @apply h-8 px-3 rounded-full bg-secondary-cream text-primary-navy flex items-center justify-center gap-1 text-xs font-medium hover:bg-secondary-lavender/30 transition-colors;
+  }
+
+  /* Icon-only button */
+  .btn-icon {
+    @apply h-10 w-10 rounded-full bg-secondary-cream border-2 border-primary-blue/30 text-primary-navy flex items-center justify-center transition-all hover:scale-[1.02] hover:border-primary-blue;
+  }
+
+  /* Story Card */
+  .story-card {
+    @apply bg-secondary-cream rounded-2xl p-6 border-2 border-transparent hover:border-primary-blue transition-all duration-300 cursor-pointer;
+  }
+
+  /* Input Field */
+  .input-field {
+    @apply w-full px-4 py-4 rounded-2xl bg-white border-2 border-primary-blue/30 focus:border-primary-blue focus:ring-0 outline-none placeholder:text-neutral text-primary-navy;
+  }
+
+  /* Progress Dots */
+  .progress-dot {
+    @apply w-2 h-2 rounded-full transition-all;
+  }
+
+  .progress-dot.active {
+    @apply bg-accent-gold;
+  }
+
+  .progress-dot.inactive {
+    @apply bg-white/50;
+  }
+
+  /* Home Button - Global Navigation */
+  .home-button {
+    @apply fixed top-6 left-6 z-50 h-12 w-12 rounded-full bg-secondary-cream border-2 border-primary-blue/30 text-primary-navy flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary-blue hover:bg-white shadow-lg;
+  }
+
+  /* Touch Target */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
 }
 
-.animate-draw-pen { 
-  animation: draw-pen 4s ease-in-out infinite; 
+/* ================================
+   STORY TEXT STYLES
+   ================================ */
+
+.story-text {
+  font-family: 'Georgia', serif;
+  @apply text-white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-@keyframes draw-star {
-  0%, 20% { opacity: 0; transform: scale(0.5); }
-  50% { opacity: 1; transform: scale(1); }
-  80%, 100% { opacity: 0; transform: scale(1.2); }
-}
+/* ================================
+   BUTTON HOVER & FOCUS STATES
+   ================================ */
 
-.animate-draw-star { 
-  animation: draw-star 4s ease-in-out infinite; 
-  animation-delay: 0.2s; 
-}
-
-/* Button Styles */
-.btn-primary {
-  @apply w-full h-[52px] rounded-full bg-gradient-to-r from-accent-coral to-accent-rose text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] shadow-button-primary;
-}
-
-.btn-secondary {
-  @apply w-full h-[48px] rounded-full bg-secondary-cream border-2 border-primary-blue text-primary-navy font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02];
-}
-
-.btn-magic {
-  @apply w-full h-[56px] rounded-full bg-gradient-to-r from-primary-blue to-secondary-lavender text-white font-sans font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] shadow-button-magic;
-}
-
-/* Global Button Hover Fix - Verhindert Überlauf über Viewport-Grenzen */
 button, .btn-primary, .btn-secondary, .btn-magic {
   transform-origin: center;
   overflow: hidden;
 }
 
-/* Sanftere Hover-Effekte für alle Buttons */
 button:hover, .btn-primary:hover, .btn-secondary:hover, .btn-magic:hover {
   transform: scale(1.02) !important;
   transition: transform 0.2s ease-in-out;
 }
 
-/* Alternative: Nur leichte Schatten-Änderung statt Skalierung */
 button:focus, .btn-primary:focus, .btn-secondary:focus, .btn-magic:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(123, 154, 224, 0.3);
-}
-
-/* Magical Background */
-.magical-background {
-  background: linear-gradient(135deg, var(--background) 0%, #FFF8F0 100%);
-}
-
-/* Floating Animation */
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-}
-
-/* Safe Area Support */
-.safe-area-top {
-  padding-top: env(safe-area-inset-top);
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Home Button - Global Navigation */
-.home-button {
-  @apply fixed top-6 left-6 z-50 h-12 w-12 rounded-full bg-secondary-cream border-2 border-primary-blue/30 text-primary-navy flex items-center justify-center transition-all duration-300 hover:scale-[1.02] hover:border-primary-blue hover:bg-white shadow-lg;
 }
 
 .home-button:hover {
@@ -114,8 +132,61 @@ button:focus, .btn-primary:focus, .btn-secondary:focus, .btn-magic:focus {
   box-shadow: 0 0 0 3px rgba(123, 154, 224, 0.3);
 }
 
-/* Touch Target */
-.touch-target {
-  min-height: 44px;
-  min-width: 44px;
+/* ================================
+   BACKGROUNDS & EFFECTS
+   ================================ */
+
+.magical-background {
+  background: radial-gradient(circle at 30% 40%, rgba(212, 197, 240, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 180, 161, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(168, 230, 207, 0.3) 0%, transparent 50%);
+}
+
+/* ================================
+   ANIMATIONS
+   ================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes draw-pen {
+  0% { top: 0%; left: 100%; transform: rotate(0deg); }
+  20% { top: 40%; left: 60%; transform: rotate(-45deg); }
+  40% { top: 60%; left: 20%; transform: rotate(10deg); }
+  60% { top: 50%; left: 70%; transform: rotate(-25deg); }
+  80% { top: 30%; left: 30%; transform: rotate(20deg); }
+  100% { top: 0%; left: 100%; transform: rotate(0deg); }
+}
+
+.animate-draw-pen {
+  animation: draw-pen 4s ease-in-out infinite;
+}
+
+@keyframes draw-star {
+  0%, 20% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.2); }
+}
+
+.animate-draw-star {
+  animation: draw-star 4s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+/* ================================
+   SAFE AREA SUPPORT (Mobile)
+   ================================ */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
