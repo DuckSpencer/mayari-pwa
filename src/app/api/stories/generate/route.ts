@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get usage statistics if available
-    let usage = undefined
+    const usage = undefined
     try {
       // Note: OpenRouter doesn't return usage in the response by default
       // You might need to track this separately or modify the client
