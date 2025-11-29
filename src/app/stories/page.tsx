@@ -97,6 +97,11 @@ export default function StoriesPage() {
   }
 
   const handleDeleteStory = async (storyId: string) => {
+    if (!user?.id) {
+      alert('Please log in to delete stories.')
+      return
+    }
+
     if (confirm('Are you sure you want to delete this story?')) {
       try {
         // Delete from database
@@ -104,7 +109,7 @@ export default function StoriesPage() {
           .from('stories')
           .delete()
           .eq('id', storyId)
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
 
         if (error) {
           console.error('Error deleting story:', error)
