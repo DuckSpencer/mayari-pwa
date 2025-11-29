@@ -3,9 +3,8 @@
 
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Star, PenTool } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
 
 interface GenerationConfig {
@@ -15,18 +14,18 @@ interface GenerationConfig {
   length: 8 | 12 | 16
 }
 
-export default function StoryGeneratePage() {
+function StoryGenerateContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
-  const [config, setConfig] = useState<GenerationConfig>({
+
+  const [_config, setConfig] = useState<GenerationConfig>({
     input: '',
     mode: 'fantasy',
     style: 'watercolor',
     length: 12
   })
-  
-  const [isGenerating, setIsGenerating] = useState(true)
+
+  const [_isGenerating, setIsGenerating] = useState(true)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -221,6 +220,18 @@ export default function StoryGeneratePage() {
         A little spark of imagination becomes a story.
       </p>
     </div>
+  )
+}
+
+export default function StoryGeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full flex items-center justify-center bg-[#FFF8F0]">
+        <div className="text-[#F48FB1] text-6xl">✨</div>
+      </div>
+    }>
+      <StoryGenerateContent />
+    </Suspense>
   )
 }
 

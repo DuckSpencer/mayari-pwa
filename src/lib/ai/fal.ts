@@ -40,26 +40,32 @@ export interface FalError {
 
 // fal.ai Client for Image Generation
 export class FalClient {
-  private apiKey: string;
+  private apiKey: string | undefined;
   private modelId: string = process.env.FAL_MODEL_ID || 'fal-ai/flux/schnell';
 
   constructor() {
-    const apiKey = process.env.FAL_KEY;
-    if (!apiKey) {
+    // Defer API key check to runtime to allow build without env vars
+    this.apiKey = process.env.FAL_KEY;
+
+    // Configure fal.ai client (will work even without key during build)
+    if (this.apiKey) {
+      fal.config({
+        credentials: this.apiKey,
+      });
+    }
+  }
+
+  private ensureApiKey(): void {
+    if (!this.apiKey) {
       throw new Error('FAL_KEY environment variable is required');
     }
-    this.apiKey = apiKey;
-    
-    // Configure fal.ai client
-    fal.config({
-      credentials: this.apiKey,
-    });
   }
 
   /**
    * Generate images using fal.ai FLUX.1 [schnell]
    */
   async generateImages(request: FalImageRequest): Promise<FalImageResponse> {
+    this.ensureApiKey();
     try {
       console.log('Generating fal.ai image with payload:', {
         prompt: request.prompt,

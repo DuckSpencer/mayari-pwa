@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { StoryCreationRequest } from '@/types'
 
 // GET /api/stories - Get user's stories
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
     

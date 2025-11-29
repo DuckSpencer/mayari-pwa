@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const text = await request.text();
     const body = text ? JSON.parse(text) : {};
-    const { prompt, width, height, style, numImages } = body;
+    const { prompt, style, numImages } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
 
     const imageRequest: ImageRequest = {
       prompt,
-      // width/height are not used by fal.ai payload currently; keep optional
       style: style || 'fantasy',
       numImages: numImages || 1,
     };
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

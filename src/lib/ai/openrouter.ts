@@ -44,15 +44,22 @@ export interface OpenRouterError {
 }
 
 class OpenRouterClient {
-  private apiKey: string
+  private apiKey: string | undefined
   private baseUrl = 'https://openrouter.ai/api/v1'
 
   constructor() {
-    const apiKey = process.env.OPENROUTER_API_KEY
-    if (!apiKey) {
-      throw new Error('OPENROUTER_API_KEY is required')
+    // Defer API key check to runtime to allow build without env vars
+    this.apiKey = process.env.OPENROUTER_API_KEY
+  }
+
+  /**
+   * Ensure API key is available (throws at runtime if missing)
+   */
+  private ensureApiKey(): string {
+    if (!this.apiKey) {
+      throw new Error('OPENROUTER_API_KEY environment variable is required')
     }
-    this.apiKey = apiKey
+    return this.apiKey
   }
 
   /**
@@ -62,6 +69,8 @@ class OpenRouterClient {
     messages: OpenRouterMessage[],
     options: Partial<Omit<OpenRouterRequest, 'model' | 'messages'>> = {}
   ): Promise<OpenRouterResponse> {
+    const apiKey = this.ensureApiKey()
+
     const requestBody: OpenRouterRequest = {
       model: 'anthropic/claude-sonnet-4',
       messages,
@@ -74,7 +83,7 @@ class OpenRouterClient {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
           'X-Title': 'Mayari PWA',

@@ -281,13 +281,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get usage statistics if available
-    let usage = undefined
-    try {
-      // Note: OpenRouter doesn't return usage in the response by default
-      // You might need to track this separately or modify the client
-    } catch (error) {
-      console.warn('Could not get usage statistics:', error)
-    }
+    // Note: OpenRouter doesn't return usage in the response by default
+    // You might need to track this separately or modify the client
+    const usage = undefined
 
     // Save story to database (user is already authenticated)
     let saved = false

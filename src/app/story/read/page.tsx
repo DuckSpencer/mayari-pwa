@@ -3,12 +3,12 @@
 
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Home, Share2 } from 'lucide-react'
 import { safeJsonParse } from '@/lib/utils/safe-json'
 
-export default function StoryReadPage() {
+function StoryReadContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -227,5 +227,17 @@ export default function StoryReadPage() {
       <div className="absolute top-1/4 left-1/4 w-8 h-8 bg-[#F4D03F]/20 rounded-full blur-sm"></div>
       <div className="absolute bottom-1/4 right-1/4 w-12 h-12 bg-[#7B9AE0]/20 rounded-full blur-sm"></div>
     </div>
+  )
+}
+
+export default function StoryReadPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full flex items-center justify-center bg-[#FFF8F0]">
+        <div className="text-[#F48FB1] text-6xl">📖</div>
+      </div>
+    }>
+      <StoryReadContent />
+    </Suspense>
   )
 } 

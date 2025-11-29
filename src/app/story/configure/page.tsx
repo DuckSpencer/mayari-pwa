@@ -3,9 +3,9 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Sparkles, Feather, Palette, Paintbrush, Mountain, Zap } from 'lucide-react'
+import { Sparkles, Palette, Paintbrush, Mountain, Zap } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
 
 interface StoryConfig {
@@ -15,7 +15,7 @@ interface StoryConfig {
   length: 8 | 12 | 16
 }
 
-export default function StoryConfigurePage() {
+function StoryConfigureContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -136,5 +136,17 @@ export default function StoryConfigurePage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function StoryConfigurePage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full flex items-center justify-center bg-[#FFF8F0]">
+        <div className="text-[#F48FB1] text-6xl">🎨</div>
+      </div>
+    }>
+      <StoryConfigureContent />
+    </Suspense>
   )
 } 

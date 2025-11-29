@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BookOpen, Plus, PenTool, Save, Share2, Download } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
@@ -20,7 +20,7 @@ interface StoryData {
   }
 }
 
-export default function StoryEndPage() {
+function StoryEndContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -249,7 +249,7 @@ export default function StoryEndPage() {
 
       {/* Footer */}
       <div className="w-full pb-8">
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="w-full h-[48px] rounded-full bg-[#F7F1E8] text-[#2C3E50] font-['Poppins'] font-medium text-base flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
         >
@@ -257,5 +257,17 @@ export default function StoryEndPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function StoryEndPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full flex items-center justify-center bg-[#FFF8F0]">
+        <div className="text-[#F48FB1] text-6xl">📖</div>
+      </div>
+    }>
+      <StoryEndContent />
+    </Suspense>
   )
 } 
