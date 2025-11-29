@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BookOpen, Plus, PenTool, Save, Share2, Download } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
+import { safeJsonParse } from '@/lib/utils/safe-json'
 
 interface StoryData {
   story: string
@@ -29,9 +30,14 @@ export default function StoryEndPage() {
 
   useEffect(() => {
     const story = searchParams.get('story') || ''
-    const images = searchParams.get('images') ? JSON.parse(searchParams.get('images')!) : []
-    const config = searchParams.get('config') ? JSON.parse(searchParams.get('config')!) : {}
-    
+    const images = safeJsonParse<string[]>(searchParams.get('images'), [])
+    const config = safeJsonParse<StoryData['config']>(searchParams.get('config'), {
+      input: '',
+      mode: 'fantasy',
+      style: '',
+      length: ''
+    })
+
     setStoryData({ story, images, config })
   }, [searchParams])
 
@@ -68,7 +74,7 @@ export default function StoryEndPage() {
     setIsSaving(true)
     try {
       // Save to localStorage for now (Epic 1 requirement)
-      const savedStories = JSON.parse(localStorage.getItem('mayari-stories') || '[]')
+      const savedStories = safeJsonParse<unknown[]>(localStorage.getItem('mayari-stories'), [])
       const newStory = {
         id: Date.now().toString(),
         title: storyData.config.input.substring(0, 50),
@@ -90,17 +96,32 @@ export default function StoryEndPage() {
     }
   }
 
-  const handleShare = () => {
-    if (navigator.share && storyData) {
-      navigator.share({
-        title: 'My Mayari Story',
-        text: storyData.story.substring(0, 100) + '...',
-        url: window.location.href
-      })
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(storyData?.story || '')
-      alert('Story copied to clipboard!')
+  const handleShare = async () => {
+    const storyText = storyData?.story || ''
+
+    try {
+      if (navigator.share && storyData) {
+        await navigator.share({
+          title: 'My Mayari Story',
+          text: storyText.substring(0, 100) + '...',
+          url: window.location.href
+        })
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(storyText)
+        alert('Story copied to clipboard!')
+      }
+    } catch (error) {
+      // User cancelled share or permission denied
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Share failed:', error)
+        try {
+          await navigator.clipboard.writeText(storyText)
+          alert('Story copied to clipboard!')
+        } catch {
+          alert('Unable to share. Please copy the story manually.')
+        }
+      }
     }
   }
 

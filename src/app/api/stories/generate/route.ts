@@ -35,6 +35,17 @@ export interface GenerateStoryResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check - prevent unauthorized API usage
+    const supabaseAuth = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required. Please log in to generate stories.' },
+        { status: 401 }
+      )
+    }
+
     // Parse request body
     const body: GenerateStoryRequest = await request.json()
     const { userInput, storyContext = {} } = body
@@ -43,6 +54,14 @@ export async function POST(request: NextRequest) {
     if (!userInput || userInput.trim().length === 0) {
       return NextResponse.json(
         { success: false, error: 'User input is required' },
+        { status: 400 }
+      )
+    }
+
+    // Input length validation to prevent abuse
+    if (userInput.length > 2000) {
+      return NextResponse.json(
+        { success: false, error: 'Input is too long. Maximum 2000 characters allowed.' },
         { status: 400 }
       )
     }
@@ -270,28 +289,25 @@ export async function POST(request: NextRequest) {
       console.warn('Could not get usage statistics:', error)
     }
 
-    // Save story to database if user is authenticated (cookie/session based)
+    // Save story to database (user is already authenticated)
     let saved = false
     try {
-      const supabase = await createServerSupabaseClient()
-      const { data: authData, error: authError } = await supabase.auth.getUser()
-      if (!authError && authData?.user?.id) {
-        const insertPayload: Database['public']['Tables']['stories']['Insert'] = {
-          user_id: authData.user.id,
-          text_content,
-          image_urls,
-          prompt: userInput,
-          story_type: storyType as 'realistic' | 'fantasy',
-          art_style: artStyle as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic',
-          page_count: pageCount as 8 | 12 | 16,
-          created_at: new Date().toISOString(),
-        }
-        const { error: dbError } = await supabase
-          .from('stories')
-          .insert(insertPayload)
-        if (!dbError) saved = true
-        else console.error('Database error:', dbError)
+      // Reuse the already authenticated supabase client
+      const insertPayload: Database['public']['Tables']['stories']['Insert'] = {
+        user_id: user.id,
+        text_content,
+        image_urls,
+        prompt: userInput,
+        story_type: storyType as 'realistic' | 'fantasy',
+        art_style: artStyle as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic',
+        page_count: pageCount as 8 | 12 | 16,
+        created_at: new Date().toISOString(),
       }
+      const { error: dbError } = await supabaseAuth
+        .from('stories')
+        .insert(insertPayload)
+      if (!dbError) saved = true
+      else console.error('Database error:', dbError)
     } catch (error) {
       console.error('Error saving story to database:', error)
     }

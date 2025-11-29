@@ -37,14 +37,14 @@ export default function StoryConfigurePage() {
     }))
   }, [searchParams])
 
-  const styles = [
+  const styles: Array<{ id: StoryConfig['style']; name: string; color: string; icon: typeof Palette }> = [
     { id: 'peppa-pig', name: 'Peppa Pig Style', color: '#F1948A', icon: Palette },
     { id: 'pixi-book', name: 'Pixiebook Style', color: '#4CAF50', icon: Paintbrush },
     { id: 'watercolor', name: 'Ghibli Style', color: '#5DADE2', icon: Mountain },
     { id: 'comic', name: 'Cartoon Style', color: '#FF9800', icon: Zap },
   ]
 
-  const lengths = [
+  const lengths: Array<{ id: StoryConfig['length']; name: string; pages: string }> = [
     { id: 8, name: 'Short', pages: '8' },
     { id: 12, name: 'Medium', pages: '12' },
     { id: 16, name: 'Long', pages: '16' },
@@ -56,7 +56,7 @@ export default function StoryConfigurePage() {
       input: config.input,
       mode: config.mode,
       style: config.style,
-      length: config.length
+      length: String(config.length)
     }).toString()}`)
   }
 

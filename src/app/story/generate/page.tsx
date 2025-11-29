@@ -32,6 +32,21 @@ export default function StoryGeneratePage() {
 
   const startedRef = useRef(false)
   const requestIdRef = useRef<string | null>(null)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      // Clear any running interval on unmount
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (startedRef.current) return
@@ -40,9 +55,9 @@ export default function StoryGeneratePage() {
     const mode = (searchParams.get('mode') as 'realistic' | 'fantasy') || 'fantasy'
     const style = (searchParams.get('style') as 'peppa-pig' | 'pixi-book' | 'watercolor' | 'comic') || 'watercolor'
     const length = parseInt(searchParams.get('length') || '12') as 8 | 12 | 16
-    
+
     setConfig({ input, mode, style, length })
-    
+
     // Start generation process
     generateStory({ input, mode, style, length })
   }, [searchParams])
@@ -53,12 +68,27 @@ export default function StoryGeneratePage() {
       setError(null)
       const myRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       requestIdRef.current = myRequestId
-      
-      // Simulate progress
-      const progressInterval = setInterval(() => {
+
+      // Clear any existing interval before starting a new one
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+
+      // Simulate progress with proper ref tracking
+      progressIntervalRef.current = setInterval(() => {
+        if (!isMountedRef.current) {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current)
+            progressIntervalRef.current = null
+          }
+          return
+        }
         setProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval)
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current)
+              progressIntervalRef.current = null
+            }
             return prev
           }
           return prev + 10
@@ -81,7 +111,14 @@ export default function StoryGeneratePage() {
         }),
       })
 
-      clearInterval(progressInterval)
+      // Clear interval after API call completes
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+
+      // Only update state if still mounted
+      if (!isMountedRef.current) return
       setProgress(100)
 
       if (!response.ok) {
@@ -95,11 +132,11 @@ export default function StoryGeneratePage() {
       if (data.success && data.story) {
         // Navigate to reading view with story data and images
         const params = new URLSearchParams({
-          story: data.story,
+          story: String(data.story),
           input: config.input,
           mode: config.mode,
           style: config.style,
-          length: config.length,
+          length: String(config.length),
         })
         
         if (data.images && data.images.length > 0) {
@@ -112,8 +149,16 @@ export default function StoryGeneratePage() {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-      setIsGenerating(false)
+      // Clear interval on error
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+      // Only update state if still mounted
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+        setIsGenerating(false)
+      }
     }
   }
 

@@ -78,10 +78,16 @@ export default function StoriesPage() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(story => 
-        story.prompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        story.text_content.some(text => text.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
+      const lowerSearch = searchTerm.toLowerCase()
+      filtered = filtered.filter(story => {
+        // Check prompt (with null safety)
+        const promptMatch = story.prompt?.toLowerCase().includes(lowerSearch) ?? false
+        // Check text_content array (with null safety)
+        const contentMatch = Array.isArray(story.text_content)
+          ? story.text_content.some(text => text?.toLowerCase().includes(lowerSearch))
+          : false
+        return promptMatch || contentMatch
+      })
     }
 
     // Filter by type
@@ -97,6 +103,12 @@ export default function StoriesPage() {
   }
 
   const handleDeleteStory = async (storyId: string) => {
+    // Ensure user is authenticated before attempting delete
+    if (!user?.id) {
+      alert('Please log in to delete stories.')
+      return
+    }
+
     if (confirm('Are you sure you want to delete this story?')) {
       try {
         // Delete from database
@@ -104,7 +116,7 @@ export default function StoriesPage() {
           .from('stories')
           .delete()
           .eq('id', storyId)
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
 
         if (error) {
           console.error('Error deleting story:', error)
@@ -121,16 +133,33 @@ export default function StoriesPage() {
     }
   }
 
-  const handleShareStory = (story: SavedStory) => {
-    if (navigator.share) {
-      navigator.share({
-        title: `Story: ${story.prompt}`,
-        text: story.text_content.join('\n\n').substring(0, 100) + '...',
-        url: window.location.href
-      })
-    } else {
-      navigator.clipboard.writeText(story.text_content.join('\n\n'))
-      alert('Story copied to clipboard!')
+  const handleShareStory = async (story: SavedStory) => {
+    const storyText = Array.isArray(story.text_content)
+      ? story.text_content.join('\n\n')
+      : ''
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Story: ${story.prompt || 'My Story'}`,
+          text: storyText.substring(0, 100) + '...',
+          url: window.location.href
+        })
+      } else {
+        await navigator.clipboard.writeText(storyText)
+        alert('Story copied to clipboard!')
+      }
+    } catch (error) {
+      // User cancelled share or permission denied
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Share failed:', error)
+        try {
+          await navigator.clipboard.writeText(storyText)
+          alert('Story copied to clipboard!')
+        } catch {
+          alert('Unable to share. Please copy the story manually.')
+        }
+      }
     }
   }
 

@@ -4,12 +4,12 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createServerSupabaseClient()
 
-    const storyId = params.id
+    const { id: storyId } = await params
     if (!storyId) {
       return NextResponse.json({ error: 'Story id required' }, { status: 400 })
     }

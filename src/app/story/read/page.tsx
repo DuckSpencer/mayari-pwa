@@ -5,7 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Home, BookOpen, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Home, Share2 } from 'lucide-react'
+import { safeJsonParse } from '@/lib/utils/safe-json'
 
 export default function StoryReadPage() {
   const router = useRouter()
@@ -44,9 +45,9 @@ export default function StoryReadPage() {
       return
     }
 
-    // Legacy: read from query params
+    // Legacy: read from query params with safe JSON parsing
     const storyText = searchParams.get('story') || ''
-    const storyImages = searchParams.get('images') ? JSON.parse(searchParams.get('images')!) : []
+    const storyImages = safeJsonParse<string[]>(searchParams.get('images'), [])
     setStory(storyText)
     setImages(storyImages)
     const pages = storyText.split('\n\n').filter(page => page.trim().length > 0)
@@ -84,18 +85,32 @@ export default function StoryReadPage() {
     router.push('/')
   }
 
-  const handleShare = () => {
-    // Implement share functionality
-    if (navigator.share) {
-      navigator.share({
-        title: 'My Mayari Story',
-        text: story,
-        url: window.location.href
-      })
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(story)
-      alert('Story copied to clipboard!')
+  const handleShare = async () => {
+    // Implement share functionality with proper error handling
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'My Mayari Story',
+          text: story,
+          url: window.location.href
+        })
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(story)
+        alert('Story copied to clipboard!')
+      }
+    } catch (error) {
+      // User cancelled share or permission denied
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Share failed:', error)
+        // Try clipboard as final fallback
+        try {
+          await navigator.clipboard.writeText(story)
+          alert('Story copied to clipboard!')
+        } catch {
+          alert('Unable to share. Please copy the story manually.')
+        }
+      }
     }
   }
 

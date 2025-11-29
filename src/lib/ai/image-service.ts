@@ -200,15 +200,15 @@ export class ImageService {
       return {
         success: allImages.length > 0,
         images: allImages,
-        provider: results[0]?.provider || 'none',
+        provider: results[0]?.provider,
       };
-      
+
     } catch (error: any) {
       console.error('Error generating story scenes:', error);
       return {
         success: false,
         error: error.message || 'Failed to generate story scenes',
-        provider: 'none',
+        provider: undefined,
       };
     }
   }
