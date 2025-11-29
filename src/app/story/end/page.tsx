@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { BookOpen, Plus, PenTool, Save, Share2, Download } from 'lucide-react'
 import { HomeButton } from '@/components/HomeButton'
 import { safeJsonParse } from '@/lib/utils/safe-json'
+import { shareStory } from '@/lib/utils/share'
 
 interface StoryData {
   story: string
@@ -97,32 +98,7 @@ function StoryEndContent() {
   }
 
   const handleShare = async () => {
-    const storyText = storyData?.story || ''
-
-    try {
-      if (navigator.share && storyData) {
-        await navigator.share({
-          title: 'My Mayari Story',
-          text: storyText.substring(0, 100) + '...',
-          url: window.location.href
-        })
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(storyText)
-        alert('Story copied to clipboard!')
-      }
-    } catch (error) {
-      // User cancelled share or permission denied
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Share failed:', error)
-        try {
-          await navigator.clipboard.writeText(storyText)
-          alert('Story copied to clipboard!')
-        } catch {
-          alert('Unable to share. Please copy the story manually.')
-        }
-      }
-    }
+    await shareStory(storyData?.story || '')
   }
 
   const handleExport = () => {

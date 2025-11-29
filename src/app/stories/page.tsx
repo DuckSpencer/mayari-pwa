@@ -9,6 +9,7 @@ import { BookOpen, Plus, Search, Filter, Trash2, Share2, Download } from 'lucide
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { HomeButton } from '@/components/HomeButton'
+import { shareStory } from '@/lib/utils/share'
 
 interface SavedStory {
   id: string
@@ -137,30 +138,7 @@ export default function StoriesPage() {
     const storyText = Array.isArray(story.text_content)
       ? story.text_content.join('\n\n')
       : ''
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `Story: ${story.prompt || 'My Story'}`,
-          text: storyText.substring(0, 100) + '...',
-          url: window.location.href
-        })
-      } else {
-        await navigator.clipboard.writeText(storyText)
-        alert('Story copied to clipboard!')
-      }
-    } catch (error) {
-      // User cancelled share or permission denied
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Share failed:', error)
-        try {
-          await navigator.clipboard.writeText(storyText)
-          alert('Story copied to clipboard!')
-        } catch {
-          alert('Unable to share. Please copy the story manually.')
-        }
-      }
-    }
+    await shareStory(storyText, { title: `Story: ${story.prompt || 'My Story'}` })
   }
 
   const handleExportStory = (story: SavedStory) => {

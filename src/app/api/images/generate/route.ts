@@ -1,9 +1,42 @@
 // src/app/api/images/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { imageService, ImageRequest } from '@/lib/ai/image-service';
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting check
+    const rateLimit = checkRateLimit(user.id, 'image-generation', RATE_LIMITS.imageGeneration);
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.ceil((rateLimit.resetTime - Date.now()) / 1000);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Rate limit exceeded. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(rateLimit.resetTime)
+          }
+        }
+      );
+    }
+
     const text = await request.text();
     const body = text ? JSON.parse(text) : {};
     const { prompt, style, numImages } = body;

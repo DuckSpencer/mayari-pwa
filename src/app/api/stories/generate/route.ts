@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { openRouterClient } from '@/lib/ai/openrouter'
 import { falClient } from '@/lib/ai/fal'
 import { createServerSupabaseClient } from '@/lib/supabase'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import type { Database } from '@/types/database'
 
 export interface GenerateStoryRequest {
@@ -43,6 +44,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Authentication required. Please log in to generate stories.' },
         { status: 401 }
+      )
+    }
+
+    // Rate limiting check
+    const rateLimit = checkRateLimit(user.id, 'story-generation', RATE_LIMITS.storyGeneration)
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Rate limit exceeded. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(rateLimit.resetTime)
+          }
+        }
       )
     }
 

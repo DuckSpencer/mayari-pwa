@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Home, Share2 } from 'lucide-react'
 import { safeJsonParse } from '@/lib/utils/safe-json'
+import { shareStory } from '@/lib/utils/share'
 
 function StoryReadContent() {
   const router = useRouter()
@@ -86,32 +87,7 @@ function StoryReadContent() {
   }
 
   const handleShare = async () => {
-    // Implement share functionality with proper error handling
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'My Mayari Story',
-          text: story,
-          url: window.location.href
-        })
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(story)
-        alert('Story copied to clipboard!')
-      }
-    } catch (error) {
-      // User cancelled share or permission denied
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Share failed:', error)
-        // Try clipboard as final fallback
-        try {
-          await navigator.clipboard.writeText(story)
-          alert('Story copied to clipboard!')
-        } catch {
-          alert('Unable to share. Please copy the story manually.')
-        }
-      }
-    }
+    await shareStory(story)
   }
 
   if (storyPages.length === 0) {
