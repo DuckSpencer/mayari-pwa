@@ -86,8 +86,9 @@ class FalProvider implements ImageProvider {
   }
 
   private mapImageSize(width?: number, height?: number): 'landscape_4_3' | 'portrait_3_4' | 'square_1_1' | 'landscape_16_9' | 'portrait_9_16' {
-    if (!width || !height) return 'landscape_4_3';
-    
+    // Default to portrait for mobile app optimization
+    if (!width || !height) return 'portrait_3_4';
+
     const ratio = width / height;
     if (ratio > 1.5) return 'landscape_16_9';
     if (ratio > 1.2) return 'landscape_4_3';

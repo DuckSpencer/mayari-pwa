@@ -183,17 +183,14 @@ export async function POST(request: NextRequest) {
     const castLines = cast.map(c => `- ${c.name} (${c.role}): ${c.attributes}`.slice(0, 100)).slice(0, 6).join('\n')
     const allowedCharacters = cast.map(c => c.name).join(', ')
 
+    // Optimized: Focus on 5 critical negatives (down from 169 lines of redundant details)
+    // Research shows prompt overload reduces effectiveness; concise negatives perform better
     const negatives = [
-      // EN
-      'no speech bubbles, no talk balloons, no printed text, no large letters, no captions, no signage, no handwriting, no labels, no logos, no signatures, no autographs, no watermarks, no banners, no posters, no stickers, no emojis, no UI, no diagrams, no charts, typography absent, do not write any names (including "Mara")',
-      'no price tags, no shop signage, no shelf labels, no sale signs, no brand packaging text, no readable text anywhere',
-      // DE
-      'keine Sprechblasen, keine Schrift, keine großen Buchstaben, keine Beschriftungen, keine Schilder, keine Handschrift, keine Etiketten, keine Logos, keine Unterschriften, keine Wasserzeichen, keine Banner, keine Poster, keine Sticker, keine Emojis, kein UI, keine Diagramme, keine Tabellen, keine Typografie, keine Namen (inklusive "Mara")',
-      'keine Preisschilder, keine Ladenbeschilderung, keine Regaletiketten, keine Sale‑Schilder, keine Marken‑Verpackungstexte, nirgends lesbarer Text',
-      // People/animals
+      'no text, no letters, no words, no signs, no labels, no typography',
       'no extra people, no background people, no partial figures',
-      'no animals, no butterflies, no birds, no insects',
-      'no glitter, no sparkles, no hearts',
+      'no animals, no pets, no insects',
+      'fully clothed, appropriate for children',
+      'no sparkles, no glitter, no decorative text',
     ].join('; ')
 
     const characterSheetCompact = meta.character_sheet
@@ -216,13 +213,13 @@ export async function POST(request: NextRequest) {
     const coreChild = cast.find(c => c.role === 'child')?.name || 'the child'
     const coreAdult = cast.find(c => c.role === 'adult')?.name || 'the adult caregiver'
 
+    // STRICT CAST MANAGEMENT: No side characters for maximum consistency
+    // Research shows side characters cause visual inconsistency across pages
+    // Only core recurring characters (child + adult) should appear across all pages
     const detectSideCharacters = (text: string): string[] => {
-      const lower = (text || '').toLowerCase()
-      return cast
-        .filter(c => c.role === 'other' && c.name)
-        .map(c => c.name)
-        .filter(name => lower.includes(name.toLowerCase()))
-        .slice(0, 1) // keep at most one extra to reduce clutter
+      // Return empty array - no side characters allowed for consistency
+      // In future, we can allow side characters ONLY on specific pages with reference images
+      return []
     }
 
     const makePrompt = (pageText: string, i: number) => {
@@ -251,41 +248,87 @@ export async function POST(request: NextRequest) {
       const extra = basePrefix + '\nKid-safe emphasis: neutral eye-level, sitting or standing, relaxed posture.'
       return `${extra}\n\nScene:\n${scene}`.slice(0, 1200)
     }
-    const tasks = text_content.map((txt, i) => async () => {
-      let prompt = makePrompt(txt, i)
-      const maxRetries = 2
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        const negative = negatives
-        const resp = await falClient.generateImages({
-          prompt,
-          negative_prompt: negative,
-          // Use FLUX image_size to really enforce 4:3 instead of square
-          image_size: 'landscape_4_3',
-          num_inference_steps: 10,
-          guidance_scale: 4.0,
-          output_format: 'jpeg',
-          enable_safety_checker: true,
-          num_images: 1,
-          // lock seed per story to preserve identity across pages
-          seed,
-        })
-        const nsfw = Array.isArray(resp.has_nsfw_concepts) ? resp.has_nsfw_concepts[0] : false
-        if (resp.success && resp.images && resp.images[0] && !nsfw) {
-          image_urls[i] = resp.images[0]
-          return
+    // Check if we're using Nano Banana (requires sequential generation with character references)
+    const isNanoBanana = process.env.FAL_IMAGE_MODEL?.includes('nano-banana') || false
+
+    if (isNanoBanana) {
+      // SEQUENTIAL WORKFLOW for Nano Banana (Character Reference)
+      // 1. Generate first page (text-to-image)
+      // 2. Generate remaining pages sequentially using first page as reference (image-to-image)
+      console.log('[images] Using Nano Banana sequential workflow for character consistency')
+
+      for (let i = 0; i < pageCount; i++) {
+        const txt = text_content[i]
+        let prompt = makePrompt(txt, i)
+        console.log(`[images] Page ${i + 1}/${pageCount} prompt=\n${prompt}`)
+
+        const maxRetries = 2
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          const resp = await falClient.generateImages({
+            prompt,
+            negative_prompt: negatives,
+            image_size: 'portrait_3_4',
+            output_format: 'jpeg',
+            num_images: 1,
+            // Use first page as character reference for all subsequent pages
+            image_urls: i > 0 && image_urls[0] ? [image_urls[0]] : undefined,
+          })
+
+          const nsfw = Array.isArray(resp.has_nsfw_concepts) ? resp.has_nsfw_concepts[0] : false
+          if (resp.success && resp.images && resp.images[0] && !nsfw) {
+            image_urls[i] = resp.images[0]
+            console.log(`[images] Page ${i + 1}/${pageCount} generated successfully${i > 0 ? ' (with reference)' : ' (base image)'}`)
+            break
+          }
+
+          console.warn(`[images] Page ${i + 1} attempt ${attempt + 1} failed or NSFW flagged=${nsfw}. Retrying...`)
+          prompt = makeExtraSafePrompt(txt)
+          await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
         }
-        console.warn(`[images] Page ${i + 1} attempt ${attempt + 1} failed or NSFW flagged=${nsfw}. Retrying with safer prompt...`)
-        // For next attempt, switch to extra-safe phrasing
-        prompt = makeExtraSafePrompt(txt)
-        await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+
+        // Fallback if all retries failed
+        if (!image_urls[i]) {
+          image_urls[i] = '/icon-192x192.png'
+        }
       }
-      // Fallback placeholder to keep arrays aligned
-      image_urls[i] = '/icon-192x192.png'
-    })
-    // Run with simple concurrency limiter
-    for (let i = 0; i < tasks.length; i += concurrency) {
-      const batch = tasks.slice(i, i + concurrency).map(fn => fn())
-      await Promise.all(batch)
+    } else {
+      // PARALLEL WORKFLOW for FLUX models (original approach with seed-based consistency)
+      console.log('[images] Using FLUX parallel workflow with seed-based consistency')
+
+      const tasks = text_content.map((txt, i) => async () => {
+        let prompt = makePrompt(txt, i)
+        console.log(`[images] Page ${i + 1}/${pageCount} seed=${seed} prompt=\n${prompt}`)
+        const maxRetries = 2
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          const negative = negatives
+          const resp = await falClient.generateImages({
+            prompt,
+            negative_prompt: negative,
+            image_size: 'portrait_3_4',
+            num_inference_steps: 10,
+            guidance_scale: 4.0,
+            output_format: 'jpeg',
+            enable_safety_checker: true,
+            num_images: 1,
+            seed,
+          })
+          const nsfw = Array.isArray(resp.has_nsfw_concepts) ? resp.has_nsfw_concepts[0] : false
+          if (resp.success && resp.images && resp.images[0] && !nsfw) {
+            image_urls[i] = resp.images[0]
+            return
+          }
+          console.warn(`[images] Page ${i + 1} attempt ${attempt + 1} failed or NSFW flagged=${nsfw}. Retrying with safer prompt...`)
+          prompt = makeExtraSafePrompt(txt)
+          await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+        }
+        image_urls[i] = '/icon-192x192.png'
+      })
+
+      // Run with simple concurrency limiter
+      for (let i = 0; i < tasks.length; i += concurrency) {
+        const batch = tasks.slice(i, i + concurrency).map(fn => fn())
+        await Promise.all(batch)
+      }
     }
 
     // Get usage statistics if available

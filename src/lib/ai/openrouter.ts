@@ -177,6 +177,7 @@ ${storyContext.theme ? `Theme: ${storyContext.theme}` : ''}`
 
   /**
    * Generate a paginated children's story as strict JSON with a fixed number of pages.
+   * Includes automatic retry logic for empty/failed responses.
    */
   async generatePagedStory(
     userInput: string,
@@ -188,7 +189,14 @@ ${storyContext.theme ? `Theme: ${storyContext.theme}` : ''}`
       theme?: string
     } = {}
   ): Promise<{ title: string; pages: Array<{ text: string }> }> {
-    const systemPrompt = `You are an award‑winning picture‑book author and read‑aloud narrator for young children (roughly ages 3–7). Return ONLY valid JSON with this exact shape and no extra text:
+    const maxRetries = 3
+    let lastError: Error | undefined
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[OpenRouter] Story generation attempt ${attempt}/${maxRetries}`)
+
+        const systemPrompt = `You are an award‑winning picture‑book author and read‑aloud narrator for young children (roughly ages 3–7). Return ONLY valid JSON with this exact shape and no extra text:
 {
   "title": string,
   "pages": Array<{ "text": string }>
@@ -204,33 +212,97 @@ Rules (structure):
 - pages.length MUST equal ${pageCount}
 - Return ONLY the JSON object above (no comments, no markdown, no extra keys)`
 
-    const contextLines = [
-      storyContext.childName ? `Child's name: ${storyContext.childName}` : undefined,
-      storyContext.childAge ? `Child's age: ${storyContext.childAge}` : undefined,
-      storyContext.storyType ? `Story type: ${storyContext.storyType}` : undefined,
-      storyContext.theme ? `Theme: ${storyContext.theme}` : undefined,
-    ].filter(Boolean).join('\n')
+        const contextLines = [
+          storyContext.childName ? `Child's name: ${storyContext.childName}` : undefined,
+          storyContext.childAge ? `Child's age: ${storyContext.childAge}` : undefined,
+          storyContext.storyType ? `Story type: ${storyContext.storyType}` : undefined,
+          storyContext.theme ? `Theme: ${storyContext.theme}` : undefined,
+        ].filter(Boolean).join('\n')
 
-    const messages: OpenRouterMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `${userInput}${contextLines ? `\n\n${contextLines}` : ''}` }
-    ]
+        const messages: OpenRouterMessage[] = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `${userInput}${contextLines ? `\n\n${contextLines}` : ''}` }
+        ]
 
-    // Generous cap: ~6000 tokens or adaptive estimate with buffer
-    const estimated = Math.min(6000, Math.max(2000, pageCount * 5 * 40 + 1200))
-    const response = await this.generateText(messages, {
-      temperature: 0.65,
-      max_tokens: estimated,
-      presence_penalty: 0.3,
-      frequency_penalty: 0.25,
-      response_format: { type: 'json_object' },
+        // Generous cap: ~6000 tokens or adaptive estimate with buffer
+        const estimated = Math.min(6000, Math.max(2000, pageCount * 5 * 40 + 1200))
+        const response = await this.generateText(messages, {
+          temperature: 0.65,
+          max_tokens: estimated,
+          presence_penalty: 0.3,
+          frequency_penalty: 0.25,
+          response_format: { type: 'json_object' },
+        })
+
+        const raw = response.choices[0]?.message?.content ?? ''
+        console.log('[OpenRouter] Raw story response length:', raw.length)
+        console.log('[OpenRouter] Raw story response preview:', raw.slice(0, 500))
+
+        const parsed = this.parseAssistantJson(raw)
+        console.log('[OpenRouter] Parsed story:', {
+          title: parsed.title,
+          pageCount: parsed.pages?.length,
+          firstPageLength: parsed.pages?.[0]?.text?.length,
+        })
+
+        const normalized = this.normalizePagedStory(parsed, pageCount)
+        console.log('[OpenRouter] Normalized story:', {
+          title: normalized.title,
+          pageCount: normalized.pages.length,
+          firstPageText: normalized.pages[0]?.text.slice(0, 100),
+        })
+
+        // Validate that the story has meaningful content
+        if (this.isValidStory(normalized)) {
+          console.log('[OpenRouter] ✅ Story generation successful')
+          return normalized
+        }
+
+        // Story is empty or invalid - retry
+        console.warn(`[OpenRouter] ⚠️ Story validation failed (attempt ${attempt}/${maxRetries}): Empty or invalid content`)
+        lastError = new Error('Generated story has empty or invalid content')
+
+        // Exponential backoff before retry
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt - 1) * 1000 // 1s, 2s, 4s
+          console.log(`[OpenRouter] Waiting ${delay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+
+      } catch (error) {
+        console.error(`[OpenRouter] Story generation error (attempt ${attempt}/${maxRetries}):`, error)
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        // Retry on error
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt - 1) * 1000
+          console.log(`[OpenRouter] Waiting ${delay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+
+    // All retries failed - throw error
+    console.error('[OpenRouter] ❌ All retry attempts failed')
+    throw lastError || new Error('Failed to generate valid story after multiple attempts')
+  }
+
+  /**
+   * Validate that a story has meaningful content (not just fallback text)
+   */
+  private isValidStory(story: { title: string; pages: Array<{ text: string }> }): boolean {
+    // Check if title is meaningful
+    if (!story.title || story.title === 'My Magical Story') {
+      return false
+    }
+
+    // Check if pages have meaningful content
+    const hasContent = story.pages.some(page => {
+      const text = (page.text || '').trim()
+      return text.length > 10 && text !== ' '
     })
 
-    const raw = response.choices[0]?.message?.content ?? ''
-    const parsed = this.parseAssistantJson(raw)
-
-    const normalized = this.normalizePagedStory(parsed, pageCount)
-    return normalized
+    return hasContent
   }
 
   /**

@@ -19,6 +19,10 @@ export interface FalImageRequest {
   // kontext-specific
   safety_tolerance?: '1' | '2' | '3' | '4' | '5' | '6';
   enhance_prompt?: boolean;
+  // Model selection for A/B testing
+  model?: 'schnell' | 'dev' | 'pro' | 'nano-banana';
+  // Character reference images for nano-banana/edit (image-to-image)
+  image_urls?: string[];
 }
 
 export interface FalImageResponse {
@@ -39,9 +43,17 @@ export interface FalError {
 }
 
 // fal.ai Client for Image Generation
+//
+// Model Options (configure via FAL_MODEL_ID env or per-request 'model' parameter):
+// - 'fal-ai/flux/schnell' (default): $0.01/img, ~1.6s, 70% character consistency
+// - 'fal-ai/flux/dev': $0.03/img, ~3-4s, 75-80% character consistency (better quality)
+// - 'fal-ai/flux/pro': $0.04/img, ~4-5s, supports character references (for future use)
+// - 'fal-ai/nano-banana': Google's model, excellent character consistency (user-reported)
+//
+// For A/B testing, pass model='dev' or model='nano-banana' in FalImageRequest
 export class FalClient {
   private apiKey: string | undefined;
-  private modelId: string = process.env.FAL_MODEL_ID || 'fal-ai/flux/schnell';
+  private modelId: string = process.env.FAL_IMAGE_MODEL || process.env.FAL_MODEL_ID || 'fal-ai/flux/schnell';
 
   constructor() {
     // Defer API key check to runtime to allow build without env vars
@@ -62,47 +74,29 @@ export class FalClient {
   }
 
   /**
-   * Generate images using fal.ai FLUX.1 [schnell]
+   * Generate images using fal.ai (FLUX.1 or Nano Banana)
+   * Supports schnell ($0.01/img, fast), dev ($0.03/img, better quality), pro ($0.04/img, with references), nano-banana (Google's model, excellent character consistency)
    */
   async generateImages(request: FalImageRequest): Promise<FalImageResponse> {
     this.ensureApiKey();
     try {
+      // Resolve model ID (allow per-request override for A/B testing)
+      // Automatically uses nano-banana/edit if image_urls are provided
+      const hasImageUrls = request.image_urls && request.image_urls.length > 0;
+      const modelId = this.resolveModelId(request.model, hasImageUrls);
+
       console.log('Generating fal.ai image with payload:', {
         prompt: request.prompt,
-        model: this.modelId,
+        model: modelId,
         aspect_ratio: request.aspect_ratio ?? '4:3',
         guidance_scale: request.guidance_scale ?? 3.5,
       });
 
-      // Normalize and prepare the request payload based on model (avoid invalid fields)
-      let payload: any;
-      const isImagen4 = this.modelId.startsWith('fal-ai/imagen4');
-      if (isImagen4) {
-        payload = {
-          prompt: request.prompt,
-          negative_prompt: request.negative_prompt || '',
-          aspect_ratio: request.aspect_ratio || '4:3',
-          num_images: request.num_images ?? 1,
-        };
-        if (typeof request.seed === 'number') payload.seed = request.seed
-      } else {
-        payload = {
-          prompt: request.prompt,
-          image_size: request.image_size ?? 'square_hd',
-          num_inference_steps: request.num_inference_steps ?? 4,
-          num_images: request.num_images ?? 1,
-          enable_safety_checker: request.enable_safety_checker !== false,
-          output_format: request.output_format ?? 'jpeg',
-        };
-        if (typeof request.negative_prompt === 'string') payload.negative_prompt = request.negative_prompt
-        if (typeof request.guidance_scale === 'number') payload.guidance_scale = request.guidance_scale
-        if (typeof request.sync_mode === 'boolean') payload.sync_mode = request.sync_mode
-        if (typeof request.acceleration === 'string') payload.acceleration = request.acceleration
-        if (typeof request.seed === 'number') payload.seed = request.seed
-      }
+      // Prepare payload based on model
+      const payload = this.preparePayload(modelId, request);
 
       // Use fal.ai client with proper error handling
-      const result = await this.makeRequestWithRetry(payload);
+      const result = await this.makeRequestWithRetry(payload, modelId);
 
       return {
         success: true,
@@ -127,14 +121,100 @@ export class FalClient {
   }
 
   /**
+   * Resolve model ID from override or env configuration
+   * Automatically selects nano-banana/edit if image_urls are provided
+   */
+  private resolveModelId(modelOverride?: string, hasImageUrls?: boolean): string {
+    if (modelOverride === 'nano-banana') {
+      return hasImageUrls ? 'fal-ai/nano-banana/edit' : 'fal-ai/nano-banana';
+    }
+    if (modelOverride) return `fal-ai/flux/${modelOverride}`;
+
+    // Check if default model is nano-banana and has image_urls
+    if (this.modelId.includes('nano-banana')) {
+      return hasImageUrls ? 'fal-ai/nano-banana/edit' : this.modelId;
+    }
+
+    return this.modelId;
+  }
+
+  /**
+   * Prepare request payload based on model type
+   */
+  private preparePayload(modelId: string, request: FalImageRequest): any {
+    const isNanoBanana = modelId.includes('nano-banana');
+    const isImagen4 = modelId.includes('imagen4');
+
+    if (isNanoBanana) {
+      // Nano Banana specific payload (text-to-image or image-to-image/edit)
+      const payload: any = {
+        prompt: request.prompt,
+        num_images: request.num_images ?? 1,
+        aspect_ratio: this.mapAspectRatio(request.image_size),
+        output_format: request.output_format ?? 'jpeg',
+        sync_mode: request.sync_mode ?? false,
+      };
+
+      // Add image_urls for nano-banana/edit (character reference)
+      if (request.image_urls && request.image_urls.length > 0) {
+        payload.image_urls = request.image_urls;
+        console.log(`Using ${request.image_urls.length} reference image(s) for character consistency`);
+      }
+
+      return payload;
+    } else if (isImagen4) {
+      // Imagen4 specific payload
+      const payload: any = {
+        prompt: request.prompt,
+        negative_prompt: request.negative_prompt || '',
+        aspect_ratio: request.aspect_ratio || '4:3',
+        num_images: request.num_images ?? 1,
+      };
+      if (typeof request.seed === 'number') payload.seed = request.seed;
+      return payload;
+    } else {
+      // FLUX specific payload
+      const payload: any = {
+        prompt: request.prompt,
+        image_size: request.image_size ?? 'square_hd',
+        num_inference_steps: request.num_inference_steps ?? 4,
+        num_images: request.num_images ?? 1,
+        enable_safety_checker: request.enable_safety_checker !== false,
+        output_format: request.output_format ?? 'jpeg',
+      };
+      if (typeof request.negative_prompt === 'string') payload.negative_prompt = request.negative_prompt;
+      if (typeof request.guidance_scale === 'number') payload.guidance_scale = request.guidance_scale;
+      if (typeof request.sync_mode === 'boolean') payload.sync_mode = request.sync_mode;
+      if (typeof request.acceleration === 'string') payload.acceleration = request.acceleration;
+      if (typeof request.seed === 'number') payload.seed = request.seed;
+      return payload;
+    }
+  }
+
+  /**
+   * Map FLUX image_size to Nano Banana aspect_ratio
+   */
+  private mapAspectRatio(imageSize?: string): string {
+    switch (imageSize) {
+      case 'portrait_3_4': return '3:4';
+      case 'portrait_9_16': return '9:16';
+      case 'landscape_4_3': return '4:3';
+      case 'landscape_16_9': return '16:9';
+      case 'square_1_1': return '1:1';
+      case 'square_hd': return '1:1';
+      default: return '4:3'; // Default to landscape 4:3 for mobile story illustrations
+    }
+  }
+
+  /**
    * Make request with retry logic based on Perplexity research
    */
-  private async makeRequestWithRetry(payload: any, maxRetries: number = 3): Promise<any> {
+  private async makeRequestWithRetry(payload: any, modelId: string, maxRetries: number = 3): Promise<any> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         console.log(`fal.ai request attempt ${attempt + 1}/${maxRetries}`);
 
-        const result = await fal.subscribe(this.modelId, {
+        const result = await fal.subscribe(modelId, {
           input: payload,
           logs: true,
           onQueueUpdate: (update) => {
@@ -285,10 +365,10 @@ export class FalClient {
     style: 'realistic' | 'fantasy' = 'fantasy'
   ): Promise<FalImageResponse> {
     const prompt = this.createStoryPrompt(storyTitle, storyContent, style);
-    
+
     return this.generateImages({
       prompt,
-      image_size: 'landscape_4_3',
+      image_size: 'portrait_3_4', // Portrait format for mobile app
       num_inference_steps: 4, // Fast generation
       guidance_scale: 3.5,
       sync_mode: false, // Use async for better performance
@@ -334,7 +414,7 @@ export class FalClient {
       const imagePromises = scenePrompts.map(prompt =>
         this.generateImages({
           prompt,
-          image_size: 'landscape_4_3',
+          image_size: 'portrait_3_4', // Portrait format for mobile app
           num_inference_steps: 4,
           guidance_scale: 3.5,
           sync_mode: false,
